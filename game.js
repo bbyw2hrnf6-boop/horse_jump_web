@@ -414,6 +414,12 @@ function buildObstacle(type, x) {
   const specs = {
     hay: { width: 50, height: 40, color: "#e9c861" },
     crate: { width: 42, height: 42, color: "#97653d" },
+    barrel: { width: 42, height: 46, color: "#8c5a34" },
+    bush: { width: 60, height: 34, color: "#68b15b" },
+    fence: { width: 58, height: 56, color: "#9c7045" },
+    log: { width: 62, height: 30, color: "#7b5230" },
+    hurdle: { width: 70, height: 50, color: "#b28a57" },
+    wagon: { width: 84, height: 52, color: "#d2b15d" },
     spike: { width: 48, height: 28, color: "#d7dbe2" },
     mushroom: { width: 58, height: 42, color: "#d84b45" },
     brick: { width: 54, height: 54, color: "#c86c38" },
@@ -433,7 +439,7 @@ function buildObstacle(type, x) {
 
 function spawnObstacle() {
   const difficulty = Math.min(8, Math.floor(state.score / 1200));
-  const types = ["hay", "crate", "spike", "mushroom", "brick", "pipe"];
+  const types = ["hay", "crate", "barrel", "bush", "fence", "log", "hurdle", "wagon", "spike", "mushroom", "brick", "pipe"];
   const type = types[Math.min(types.length - 1, Math.floor(Math.random() * (3 + difficulty / 2)))];
   state.obstacles.push(buildObstacle(type, WIDTH + 120 + Math.random() * 80));
 }
@@ -677,6 +683,13 @@ function drawHorse() {
   ctx.fill();
   ctx.stroke();
 
+  ctx.strokeStyle = invisibleFlash ? "#6d8192" : "#3f2512";
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.moveTo(x + 28, groundY - 56);
+  ctx.quadraticCurveTo(x - 2, groundY - 78, x + 12, groundY - 24);
+  ctx.stroke();
+
   ctx.beginPath();
   ctx.ellipse(x + 155, groundY - 108, 26, 22, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -752,6 +765,123 @@ function drawObstacle(obstacle) {
   ctx.ellipse(obstacle.x + obstacle.width / 2, GROUND_Y - 2, obstacle.width / 2, 8, 0, 0, Math.PI * 2);
   ctx.fill();
 
+  if (obstacle.type === "bush") {
+    ctx.fillStyle = "#4f9446";
+    ctx.beginPath();
+    ctx.ellipse(obstacle.x + 16, obstacle.y + 22, 18, 16, 0, 0, Math.PI * 2);
+    ctx.ellipse(obstacle.x + 33, obstacle.y + 14, 20, 18, 0, 0, Math.PI * 2);
+    ctx.ellipse(obstacle.x + 50, obstacle.y + 22, 18, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#79c86d";
+    ctx.beginPath();
+    ctx.ellipse(obstacle.x + 24, obstacle.y + 18, 10, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(obstacle.x + 42, obstacle.y + 16, 11, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+
+  if (obstacle.type === "barrel") {
+    ctx.fillStyle = "#8c5a34";
+    ctx.strokeStyle = "#5d3a22";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2, obstacle.width / 2, obstacle.height / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "#c7a16a";
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + 6, obstacle.y + 12);
+    ctx.lineTo(obstacle.x + obstacle.width - 6, obstacle.y + 12);
+    ctx.moveTo(obstacle.x + 6, obstacle.y + obstacle.height / 2);
+    ctx.lineTo(obstacle.x + obstacle.width - 6, obstacle.y + obstacle.height / 2);
+    ctx.moveTo(obstacle.x + 6, obstacle.y + obstacle.height - 12);
+    ctx.lineTo(obstacle.x + obstacle.width - 6, obstacle.y + obstacle.height - 12);
+    ctx.stroke();
+    return;
+  }
+
+  if (obstacle.type === "fence") {
+    ctx.fillStyle = "#9c7045";
+    for (const postX of [8, 24, 40]) {
+      ctx.fillRect(obstacle.x + postX, obstacle.y + 4, 6, obstacle.height - 4);
+      ctx.beginPath();
+      ctx.moveTo(obstacle.x + postX - 2, obstacle.y + 6);
+      ctx.lineTo(obstacle.x + postX + 3, obstacle.y);
+      ctx.lineTo(obstacle.x + postX + 8, obstacle.y + 6);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.fillStyle = "#b98b58";
+    ctx.fillRect(obstacle.x, obstacle.y + 16, obstacle.width, 6);
+    ctx.fillRect(obstacle.x, obstacle.y + 32, obstacle.width, 6);
+    return;
+  }
+
+  if (obstacle.type === "log") {
+    ctx.fillStyle = "#7b5230";
+    ctx.strokeStyle = "#4d321d";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2, obstacle.width / 2, obstacle.height / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "#a87a4e";
+    ctx.beginPath();
+    ctx.arc(obstacle.x + 12, obstacle.y + obstacle.height / 2, 7, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + 20, obstacle.y + 8);
+    ctx.lineTo(obstacle.x + obstacle.width - 8, obstacle.y + 8);
+    ctx.moveTo(obstacle.x + 20, obstacle.y + obstacle.height - 8);
+    ctx.lineTo(obstacle.x + obstacle.width - 8, obstacle.y + obstacle.height - 8);
+    ctx.stroke();
+    return;
+  }
+
+  if (obstacle.type === "hurdle") {
+    ctx.strokeStyle = "#8d6640";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + 10, GROUND_Y);
+    ctx.lineTo(obstacle.x + 18, obstacle.y);
+    ctx.moveTo(obstacle.x + obstacle.width - 10, GROUND_Y);
+    ctx.lineTo(obstacle.x + obstacle.width - 18, obstacle.y);
+    ctx.moveTo(obstacle.x + 12, obstacle.y + 8);
+    ctx.lineTo(obstacle.x + obstacle.width - 12, obstacle.y + 8);
+    ctx.moveTo(obstacle.x + 16, obstacle.y + 22);
+    ctx.lineTo(obstacle.x + obstacle.width - 16, obstacle.y + 22);
+    ctx.stroke();
+    ctx.fillStyle = "#d8c398";
+    ctx.fillRect(obstacle.x + 12, obstacle.y + 10, obstacle.width - 24, 4);
+    return;
+  }
+
+  if (obstacle.type === "wagon") {
+    ctx.fillStyle = "#d2b15d";
+    ctx.strokeStyle = "#8a6635";
+    ctx.lineWidth = 3;
+    ctx.fillRect(obstacle.x + 8, obstacle.y + 8, obstacle.width - 16, obstacle.height - 10);
+    ctx.strokeRect(obstacle.x + 8, obstacle.y + 8, obstacle.width - 16, obstacle.height - 10);
+    ctx.strokeStyle = "#a98345";
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + 18, obstacle.y + 18);
+    ctx.lineTo(obstacle.x + obstacle.width - 18, obstacle.y + 18);
+    ctx.moveTo(obstacle.x + 18, obstacle.y + 30);
+    ctx.lineTo(obstacle.x + obstacle.width - 18, obstacle.y + 30);
+    ctx.stroke();
+    ctx.fillStyle = "#6c4a2c";
+    ctx.beginPath();
+    ctx.arc(obstacle.x + 20, GROUND_Y, 10, 0, Math.PI * 2);
+    ctx.arc(obstacle.x + obstacle.width - 20, GROUND_Y, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#c7a16a";
+    ctx.beginPath();
+    ctx.arc(obstacle.x + 20, GROUND_Y, 5, 0, Math.PI * 2);
+    ctx.arc(obstacle.x + obstacle.width - 20, GROUND_Y, 5, 0, Math.PI * 2);
+    ctx.stroke();
+    return;
+  }
+
   if (obstacle.type === "spike") {
     ctx.fillStyle = "#d6d8dd";
     ctx.strokeStyle = "#4a535f";
@@ -775,6 +905,12 @@ function drawObstacle(obstacle) {
     ctx.beginPath();
     ctx.ellipse(obstacle.x + obstacle.width / 2, obstacle.y + 16, obstacle.width / 2, 16, 0, Math.PI, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = "#fff3e1";
+    ctx.beginPath();
+    ctx.arc(obstacle.x + 18, obstacle.y + 14, 4, 0, Math.PI * 2);
+    ctx.arc(obstacle.x + 30, obstacle.y + 10, 4, 0, Math.PI * 2);
+    ctx.arc(obstacle.x + 42, obstacle.y + 14, 4, 0, Math.PI * 2);
+    ctx.fill();
     return;
   }
 
@@ -792,7 +928,41 @@ function drawObstacle(obstacle) {
     ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + 18);
     ctx.moveTo(obstacle.x, obstacle.y + 36);
     ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + 36);
+    ctx.moveTo(obstacle.x + 18, obstacle.y);
+    ctx.lineTo(obstacle.x + 18, obstacle.y + 18);
+    ctx.moveTo(obstacle.x + 36, obstacle.y + 18);
+    ctx.lineTo(obstacle.x + 36, obstacle.y + obstacle.height);
     ctx.stroke();
+  } else if (obstacle.type === "hay") {
+    ctx.strokeStyle = "#c39e38";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + 8, obstacle.y + 10);
+    ctx.lineTo(obstacle.x + obstacle.width - 8, obstacle.y + 10);
+    ctx.moveTo(obstacle.x + 8, obstacle.y + 22);
+    ctx.lineTo(obstacle.x + obstacle.width - 8, obstacle.y + 22);
+    ctx.moveTo(obstacle.x + 14, obstacle.y + 4);
+    ctx.lineTo(obstacle.x + 10, GROUND_Y - 4);
+    ctx.moveTo(obstacle.x + 30, obstacle.y + 4);
+    ctx.lineTo(obstacle.x + 26, GROUND_Y - 4);
+    ctx.stroke();
+  } else if (obstacle.type === "crate") {
+    ctx.strokeStyle = "#6f4928";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x, obstacle.y);
+    ctx.lineTo(obstacle.x + obstacle.width, GROUND_Y);
+    ctx.moveTo(obstacle.x + obstacle.width, obstacle.y);
+    ctx.lineTo(obstacle.x, GROUND_Y);
+    ctx.moveTo(obstacle.x + obstacle.width / 2, obstacle.y);
+    ctx.lineTo(obstacle.x + obstacle.width / 2, GROUND_Y);
+    ctx.stroke();
+  } else if (obstacle.type === "pipe") {
+    ctx.fillStyle = "#64d064";
+    ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, 14);
+    ctx.strokeStyle = "#1b5b20";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(obstacle.x, obstacle.y, obstacle.width, 14);
   }
 }
 

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Horse Jump Web</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Horse Jump</p>
+        <h1>Web Build</h1>
+      </div>
+      <div class="topbar-actions">
+        <button id="restartButton" type="button">Restart</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="game-panel">
+        <div class="hud-row">
+          <div class="hud-card">
+            <span class="label">Score</span>
+            <strong id="scoreValue">0</strong>
+          </div>
+          <div class="hud-card">
+            <span class="label">Coins</span>
+            <strong id="coinValue">0</strong>
+          </div>
+          <div class="hud-card">
+            <span class="label">Area</span>
+            <strong id="areaValue">1</strong>
+          </div>
+          <div class="hud-card">
+            <span class="label">Perk</span>
+            <strong id="perkValue">None</strong>
+          </div>
+        </div>
+
+        <canvas id="gameCanvas" width="960" height="540"></canvas>
+
+        <div class="controls-panel">
+          <p><strong>Jump:</strong> Space / Tap</p>
+          <p><strong>Perks:</strong> 1 Fly, 2 Magnet, 3 Blaster</p>
+        </div>
+      </section>
+
+      <aside class="side-panel">
+        <section class="panel">
+          <h2>Perks</h2>
+          <div class="perk-list">
+            <button class="perk-button" data-perk="fly" type="button">
+              <span>1</span>
+              <strong>Fly</strong>
+              <small>35 coins</small>
+            </button>
+            <button class="perk-button" data-perk="magnet" type="button">
+              <span>2</span>
+              <strong>Magnet</strong>
+              <small>28 coins</small>
+            </button>
+            <button class="perk-button" data-perk="blaster" type="button">
+              <span>3</span>
+              <strong>Blaster</strong>
+              <small>32 coins</small>
+            </button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Status</h2>
+          <p id="statusText">Press Space or tap to jump.</p>
+        </section>
+
+        <section class="panel">
+          <h2>Leaderboard</h2>
+          <form id="scoreForm" class="score-form">
+            <input id="playerName" name="playerName" maxlength="14" placeholder="Your name">
+            <button id="scoreSubmitButton" type="submit">Confirm</button>
+          </form>
+          <p class="panel-note" id="scorePromptText">Enter a name after game over to save your score.</p>
+          <ol id="leaderboardList" class="leaderboard-list"></ol>
+          <p class="panel-note" id="leaderboardMode">Mode: local only for now</p>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script src="./game.js"></script>
+</body>
+</html>

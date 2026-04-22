@@ -356,6 +356,25 @@ function getActivePerk() {
   return "None";
 }
 
+function getPerkCountdownState() {
+  const activePerks = [
+    { name: "Fly", until: state.flyUntil },
+    { name: "Magnet", until: state.magnetUntil },
+    { name: "Blaster", until: state.blasterUntil },
+  ];
+
+  for (const perk of activePerks) {
+    if (perk.until > state.frame) {
+      const secondsLeft = Math.ceil((perk.until - state.frame) / 60);
+      if (secondsLeft <= 4) {
+        return { name: perk.name, secondsLeft };
+      }
+    }
+  }
+
+  return null;
+}
+
 function tryActivatePerk(perkName) {
   if (state.gameOver) return;
   if (state.coins < PERK_COSTS[perkName]) {
@@ -822,6 +841,7 @@ function drawProjectile(projectile) {
 
 function drawScene() {
   const theme = getAreaTheme();
+  const perkCountdown = getPerkCountdownState();
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
   ctx.fillStyle = theme.sky;
@@ -853,6 +873,27 @@ function drawScene() {
   for (const coin of state.coinsInWorld) drawCoin(coin);
   for (const projectile of state.projectiles) drawProjectile(projectile);
   drawHorse();
+
+  if (perkCountdown) {
+    ctx.save();
+    ctx.fillStyle = "rgba(191, 109, 46, 0.12)";
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    ctx.fillStyle = "rgba(255, 248, 239, 0.94)";
+    ctx.strokeStyle = "#bf6d2e";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.roundRect(WIDTH / 2 - 120, 56, 240, 108, 22);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#8f3029";
+    ctx.font = "bold 20px Trebuchet MS";
+    ctx.textAlign = "center";
+    ctx.fillText(`${perkCountdown.name} ending`, WIDTH / 2, 92);
+    ctx.fillStyle = "#2f241b";
+    ctx.font = "bold 52px Trebuchet MS";
+    ctx.fillText(`${perkCountdown.secondsLeft}`, WIDTH / 2, 138);
+    ctx.restore();
+  }
 
   if (state.gameOver) {
     ctx.fillStyle = "rgba(255, 249, 239, 0.96)";

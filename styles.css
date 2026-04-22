@@ -123,6 +123,21 @@ canvas {
   color: var(--muted);
 }
 
+.mobile-controls {
+  display: none;
+  margin-top: 14px;
+}
+
+.mobile-jump-button {
+  width: 100%;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #3e8ac0 0%, #245b8f 100%);
+  box-shadow: 0 12px 24px rgba(36, 91, 143, 0.28);
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+}
+
 button,
 input {
   font: inherit;
@@ -191,11 +206,96 @@ button {
 }
 
 @media (max-width: 980px) {
+  .app-shell {
+    padding: 12px;
+  }
+
   .layout {
     grid-template-columns: 1fr;
   }
 
+  .topbar {
+    align-items: start;
+    flex-direction: column;
+  }
+
   .hud-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .side-panel {
+    gap: 12px;
+  }
+
+  .panel,
+  .game-panel {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .score-form {
+    flex-direction: column;
+  }
+
+  .score-form input,
+  .score-form button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  body {
+    min-height: 100dvh;
+  }
+
+  .app-shell {
+    padding: 10px;
+  }
+
+  h1 {
+    font-size: 1.45rem;
+  }
+
+  .hud-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .hud-card {
+    padding: 10px 12px;
+  }
+
+  .hud-card strong {
+    font-size: 1.2rem;
+  }
+
+  canvas {
+    border-radius: 14px;
+  }
+
+  .controls-panel {
+    font-size: 0.92rem;
+    gap: 8px;
+  }
+
+  .mobile-controls {
+    display: block;
+  }
+
+  .perk-list {
+    grid-template-columns: 1fr;
+  }
+
+  .perk-button {
+    grid-template-columns: 38px 1fr;
+    row-gap: 3px;
+  }
+
+  .perk-button small {
+    grid-column: 2;
+  }
+
+  .leaderboard-list {
+    font-size: 0.95rem;
   }
 }

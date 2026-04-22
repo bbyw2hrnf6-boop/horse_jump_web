@@ -52,6 +52,7 @@ const playerNameInput = document.getElementById("playerName");
 const scoreSubmitButton = document.getElementById("scoreSubmitButton");
 const scorePromptText = document.getElementById("scorePromptText");
 const restartButton = document.getElementById("restartButton");
+const jumpButton = document.getElementById("jumpButton");
 const perkButtons = [...document.querySelectorAll(".perk-button")];
 
 const leaderboard = new LeaderboardService();
@@ -210,9 +211,9 @@ function playCrashSound() {
 }
 
 function playAppleSound() {
-  playTone({ frequency: 587.33, duration: 0.06, type: "triangle", volume: 0.05 });
-  playTone({ frequency: 783.99, duration: 0.08, type: "triangle", volume: 0.05, when: 0.06 });
-  playTone({ frequency: 1046.5, duration: 0.12, type: "triangle", volume: 0.05, when: 0.14 });
+  playTone({ frequency: 587.33, duration: 0.06, type: "triangle", volume: 0.06 });
+  playTone({ frequency: 783.99, duration: 0.08, type: "triangle", volume: 0.06, when: 0.06 });
+  playTone({ frequency: 1046.5, duration: 0.12, type: "triangle", volume: 0.06, when: 0.14 });
 }
 
 function getAreaMusicPattern(area) {
@@ -222,6 +223,13 @@ function getAreaMusicPattern(area) {
     { lead: [220, 261.63, 329.63, 349.23, 329.63, 293.66, 261.63, 246.94], bass: [110, 82.41, 98, 82.41] },
     { lead: [329.63, 392, 523.25, 493.88, 440, 392, 349.23, 440], bass: [164.81, 123.47, 146.83, 123.47] },
   ];
+  const powerPattern = {
+    lead: [523.25, 659.25, 783.99, 987.77, 880, 783.99, 698.46, 880, 1046.5, 1174.66, 1046.5, 880],
+    bass: [130.81, 164.81, 196, 246.94, 164.81, 220],
+  };
+  if (area === "power") {
+    return powerPattern;
+  }
   return patterns[area % patterns.length];
 }
 
@@ -327,6 +335,7 @@ function resetGame() {
     jumpsLeft: 2,
     onGround: true,
   });
+  playerNameInput.value = "";
   startAreaMusic(state.area, true);
 }
 
@@ -438,6 +447,7 @@ function activateApplePower() {
   state.powerModeUntil = state.frame + 10 * 60;
   state.status = "Apple power active: invisibility for 10 seconds.";
   playAppleSound();
+  startAreaMusic("power", true);
 }
 
 function updateHorse() {
@@ -466,8 +476,9 @@ function updateWorld() {
   state.area = Math.floor(state.score / 2500) % 4;
   state.worldSpeed = 7 + Math.min(8, Math.floor(state.score / 2500)) * 0.5;
   state.score += 1;
-  if (state.area !== previousArea) {
-    startAreaMusic(state.area, true);
+  const desiredMusic = state.powerModeUntil > state.frame ? "power" : state.area;
+  if (desiredMusic !== audioState.currentArea || state.area !== previousArea) {
+    startAreaMusic(desiredMusic, true);
   }
 
   state.spawnTimer -= 1;
@@ -636,8 +647,10 @@ function drawHorse() {
   const x = horse.x;
   const groundY = horse.y;
   const invisibleFlash = state.invisibleUntil > state.frame && Math.floor(state.frame / 6) % 2 === 0;
-  ctx.fillStyle = invisibleFlash ? "#c8dced" : "#9b6338";
-  ctx.strokeStyle = invisibleFlash ? "#8ba1b3" : "#704522";
+  const bodyFill = invisibleFlash ? "#c8dced" : "#9b6338";
+  const bodyStroke = invisibleFlash ? "#8ba1b3" : "#704522";
+  ctx.fillStyle = bodyFill;
+  ctx.strokeStyle = bodyStroke;
   ctx.lineWidth = 3;
 
   ctx.beginPath();
@@ -650,6 +663,23 @@ function drawHorse() {
   ctx.fill();
   ctx.stroke();
 
+  ctx.fillStyle = invisibleFlash ? "#d8ebf8" : "#87552f";
+  ctx.strokeStyle = bodyStroke;
+  ctx.beginPath();
+  ctx.moveTo(x + 146, groundY - 126);
+  ctx.lineTo(x + 151, groundY - 148);
+  ctx.lineTo(x + 160, groundY - 128);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x + 161, groundY - 124);
+  ctx.lineTo(x + 168, groundY - 146);
+  ctx.lineTo(x + 176, groundY - 124);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
   ctx.beginPath();
   ctx.moveTo(x + 108, groundY - 80);
   ctx.lineTo(x + 142, groundY - 118);
@@ -658,7 +688,7 @@ function drawHorse() {
   ctx.fill();
   ctx.stroke();
 
-  ctx.strokeStyle = "#704522";
+  ctx.strokeStyle = bodyStroke;
   ctx.lineWidth = 6;
   for (const legX of [44, 66, 94, 114]) {
     ctx.beginPath();
@@ -668,12 +698,31 @@ function drawHorse() {
   }
 
   if (state.powerModeUntil > state.frame) {
+    ctx.fillStyle = "#3056c9";
+    ctx.fillRect(x + 132, groundY - 122, 28, 12);
+    ctx.fillStyle = "#ffd84d";
+    ctx.beginPath();
+    ctx.moveTo(x + 146, groundY - 120);
+    ctx.lineTo(x + 154, groundY - 112);
+    ctx.lineTo(x + 146, groundY - 104);
+    ctx.lineTo(x + 138, groundY - 112);
+    ctx.closePath();
+    ctx.fill();
     ctx.fillStyle = "#d94242";
     ctx.beginPath();
-    ctx.moveTo(x + 118, groundY - 84);
-    ctx.lineTo(x + 106, groundY - 112);
-    ctx.lineTo(x + 92, groundY - 60);
+    ctx.moveTo(x + 122, groundY - 84);
+    ctx.lineTo(x + 112, groundY - 110);
+    ctx.lineTo(x + 94, groundY - 58);
     ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#3056c9";
+    ctx.beginPath();
+    ctx.ellipse(x + 156, groundY - 109, 20, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#f5f7fb";
+    ctx.beginPath();
+    ctx.ellipse(x + 150, groundY - 111, 3, 2, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + 162, groundY - 111, 3, 2, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 }
@@ -828,11 +877,12 @@ function syncHud() {
   statusText.textContent = state.status;
   scoreSubmitButton.textContent = state.awaitingScoreEntry ? "Confirm Result" : "Confirm";
   scorePromptText.textContent = state.awaitingScoreEntry
-    ? "Game paused. Enter a name and confirm to save, or confirm empty to restart."
+    ? "Game paused. Enter a name and confirm to save, or press Space / confirm empty to restart."
     : "Enter a name after game over to save your score.";
   playerNameInput.disabled = !state.awaitingScoreEntry;
   scoreSubmitButton.disabled = !state.awaitingScoreEntry;
   restartButton.disabled = state.awaitingScoreEntry;
+  jumpButton.disabled = state.awaitingScoreEntry;
 
   for (const button of perkButtons) {
     const perk = button.dataset.perk;
@@ -893,7 +943,12 @@ document.addEventListener("keydown", (event) => {
   unlockAudio();
   if (event.code === "Space") {
     event.preventDefault();
-    if (state.gameOver && !state.awaitingScoreEntry) {
+    if (state.gameOver && state.awaitingScoreEntry && !playerNameInput.value.trim()) {
+      state.scoreSubmitted = true;
+      state.awaitingScoreEntry = false;
+      state.status = "No name entered, score skipped. Restarting.";
+      resetGame();
+    } else if (state.gameOver && !state.awaitingScoreEntry) {
       resetGame();
     } else if (!state.gameOver) {
       jump();
@@ -911,6 +966,13 @@ canvas.addEventListener("pointerdown", () => {
   if (state.gameOver && !state.awaitingScoreEntry) {
     resetGame();
   } else if (!state.awaitingScoreEntry) {
+    jump();
+  }
+});
+
+jumpButton.addEventListener("click", () => {
+  unlockAudio();
+  if (!state.awaitingScoreEntry && !state.gameOver) {
     jump();
   }
 });

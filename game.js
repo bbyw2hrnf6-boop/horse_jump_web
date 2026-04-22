@@ -51,6 +51,7 @@ const scoreForm = document.getElementById("scoreForm");
 const playerNameInput = document.getElementById("playerName");
 const scoreSubmitButton = document.getElementById("scoreSubmitButton");
 const scorePromptText = document.getElementById("scorePromptText");
+const leaderboardPanel = document.getElementById("leaderboardPanel");
 const restartButton = document.getElementById("restartButton");
 const perkButtons = [...document.querySelectorAll(".perk-button")];
 
@@ -869,18 +870,22 @@ function drawScene() {
 }
 
 function syncHud() {
+  const isMobileLayout = window.matchMedia("(max-width: 720px)").matches;
   scoreValue.textContent = `${state.score}`;
   coinValue.textContent = `${state.coins}`;
   areaValue.textContent = `${state.area + 1}`;
   perkValue.textContent = getActivePerk();
   statusText.textContent = state.status;
-  scoreSubmitButton.textContent = state.awaitingScoreEntry ? "Confirm Result" : "Confirm";
+  scoreSubmitButton.textContent = state.awaitingScoreEntry
+    ? (isMobileLayout ? "Confirm Result / Restart" : "Confirm Result")
+    : "Confirm";
   scorePromptText.textContent = state.awaitingScoreEntry
     ? "Game paused. Enter a name and confirm to save, or press Space / confirm empty to restart."
     : "Enter a name after game over to save your score.";
   playerNameInput.disabled = !state.awaitingScoreEntry;
   scoreSubmitButton.disabled = !state.awaitingScoreEntry;
   restartButton.disabled = state.awaitingScoreEntry;
+  leaderboardPanel.parentElement.classList.toggle("mobile-game-over", isMobileLayout && state.awaitingScoreEntry);
 
   for (const button of perkButtons) {
     const perk = button.dataset.perk;

@@ -123,21 +123,6 @@ canvas {
   color: var(--muted);
 }
 
-.mobile-controls {
-  display: none;
-  margin-top: 14px;
-}
-
-.mobile-jump-button {
-  width: 100%;
-  padding: 16px 18px;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #3e8ac0 0%, #245b8f 100%);
-  box-shadow: 0 12px 24px rgba(36, 91, 143, 0.28);
-  font-size: 1.1rem;
-  letter-spacing: 0.02em;
-}
-
 button,
 input {
   font: inherit;
@@ -276,10 +261,6 @@ button {
   .controls-panel {
     font-size: 0.92rem;
     gap: 8px;
-  }
-
-  .mobile-controls {
-    display: block;
   }
 
   .perk-list {

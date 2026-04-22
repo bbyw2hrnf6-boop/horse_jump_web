@@ -52,7 +52,6 @@ const playerNameInput = document.getElementById("playerName");
 const scoreSubmitButton = document.getElementById("scoreSubmitButton");
 const scorePromptText = document.getElementById("scorePromptText");
 const restartButton = document.getElementById("restartButton");
-const jumpButton = document.getElementById("jumpButton");
 const perkButtons = [...document.querySelectorAll(".perk-button")];
 
 const leaderboard = new LeaderboardService();
@@ -882,7 +881,6 @@ function syncHud() {
   playerNameInput.disabled = !state.awaitingScoreEntry;
   scoreSubmitButton.disabled = !state.awaitingScoreEntry;
   restartButton.disabled = state.awaitingScoreEntry;
-  jumpButton.disabled = state.awaitingScoreEntry;
 
   for (const button of perkButtons) {
     const perk = button.dataset.perk;
@@ -966,13 +964,6 @@ canvas.addEventListener("pointerdown", () => {
   if (state.gameOver && !state.awaitingScoreEntry) {
     resetGame();
   } else if (!state.awaitingScoreEntry) {
-    jump();
-  }
-});
-
-jumpButton.addEventListener("click", () => {
-  unlockAudio();
-  if (!state.awaitingScoreEntry && !state.gameOver) {
     jump();
   }
 });

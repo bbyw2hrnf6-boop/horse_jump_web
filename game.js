@@ -476,7 +476,11 @@ function spawnObstacle() {
   const difficulty = Math.min(8, Math.floor(state.score / 1200));
   const types = ["hay", "crate", "barrel", "bush", "fence", "log", "hurdle", "wagon", "spike", "mushroom", "brick", "pipe", "cow"];
   const availableTypes = types.slice(0, Math.min(types.length, 7 + difficulty));
-  const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+  const cowUnlocked = state.score >= 2600;
+  const spawnCow = cowUnlocked && Math.random() < 0.18;
+  const type = spawnCow
+    ? "cow"
+    : availableTypes[Math.floor(Math.random() * availableTypes.length)];
   state.obstacles.push(buildObstacle(type, WIDTH + 120 + Math.random() * 80));
 }
 
@@ -495,11 +499,11 @@ function spawnCoins() {
 
 function spawnApple() {
   const yOptions = [GROUND_Y - 90, GROUND_Y - 145, GROUND_Y - 200];
-  const rotten = Math.random() < 0.34;
+  const rotten = Math.random() < 0.16;
   state.pickups.push({
     x: WIDTH + 120 + Math.random() * 140,
     y: yOptions[Math.floor(Math.random() * yOptions.length)],
-    size: Math.round(16 * PICKUP_SCALE),
+    size: Math.round((rotten ? 14 : 16) * PICKUP_SCALE),
     pulse: Math.random() * Math.PI * 2,
     kind: rotten ? "rotten" : "apple",
   });

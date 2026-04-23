@@ -322,14 +322,20 @@ button {
   }
 
   .corner-perk-dash {
-    top: 8px;
-    right: 8px;
-    width: min(136px, calc(100% - 16px));
-    padding: 7px;
+    position: static;
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 14px;
+    backdrop-filter: none;
   }
 
   .corner-perk-dash .perk-list {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .corner-perk-dash h2 {
+    display: none;
   }
 
   .controls-panel {
@@ -354,9 +360,24 @@ button {
     padding: 10px 8px;
   }
 
+  .corner-perk-dash .perk-button {
+    grid-template-columns: 1fr;
+    gap: 4px;
+    padding: 10px 6px;
+  }
+
   .corner-perk-dash .perk-button span {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
+  }
+
+  .corner-perk-dash .perk-button strong {
+    font-size: 0.78rem;
+  }
+
+  .corner-perk-dash .perk-button small {
+    display: block;
+    font-size: 0.68rem;
   }
 
   .perk-button strong,

@@ -69,6 +69,10 @@ h1, h2, p {
   padding: 16px;
 }
 
+.game-stage {
+  position: relative;
+}
+
 .side-panel {
   display: flex;
   flex-direction: column;
@@ -112,6 +116,24 @@ canvas {
   border: 3px solid #6f8f53;
   touch-action: manipulation;
   background: linear-gradient(180deg, #d6efff 0%, #f7f2e2 100%);
+}
+
+.corner-perk-dash {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: min(150px, calc(100% - 24px));
+  padding: 8px;
+  border-radius: 14px;
+  background: rgba(255, 250, 241, 0.9);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 14px 28px rgba(64, 42, 18, 0.18);
+  z-index: 2;
+}
+
+.corner-perk-dash h2 {
+  margin-bottom: 6px;
+  font-size: 0.82rem;
 }
 
 .controls-panel {
@@ -164,6 +186,35 @@ button {
   border-radius: 16px;
   background: #f5ecdf;
   color: var(--text);
+}
+
+.corner-perk-dash .perk-list {
+  gap: 6px;
+}
+
+.corner-perk-dash .perk-button {
+  grid-template-columns: 26px 1fr;
+  gap: 6px;
+  padding: 7px 8px;
+  border-radius: 12px;
+  border: 2px solid rgba(141, 101, 54, 0.14);
+  background: rgba(255, 248, 238, 0.96);
+}
+
+.corner-perk-dash .perk-button span {
+  width: 26px;
+  height: 26px;
+  font-size: 0.8rem;
+}
+
+.corner-perk-dash .perk-button strong {
+  font-size: 0.8rem;
+  line-height: 1.05;
+}
+
+.corner-perk-dash .perk-button small {
+  display: none;
+  color: var(--muted);
 }
 
 .perk-button span {
@@ -270,6 +321,17 @@ button {
     border-radius: 14px;
   }
 
+  .corner-perk-dash {
+    top: 8px;
+    right: 8px;
+    width: min(136px, calc(100% - 16px));
+    padding: 7px;
+  }
+
+  .corner-perk-dash .perk-list {
+    grid-template-columns: 1fr;
+  }
+
   .controls-panel {
     font-size: 0.92rem;
     gap: 8px;
@@ -290,6 +352,11 @@ button {
     text-align: center;
     row-gap: 3px;
     padding: 10px 8px;
+  }
+
+  .corner-perk-dash .perk-button span {
+    width: 24px;
+    height: 24px;
   }
 
   .perk-button strong,

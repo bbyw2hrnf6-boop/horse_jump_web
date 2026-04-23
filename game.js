@@ -454,7 +454,7 @@ function buildObstacle(type, x) {
 function spawnObstacle() {
   const difficulty = Math.min(8, Math.floor(state.score / 1200));
   const types = ["hay", "crate", "barrel", "bush", "fence", "log", "hurdle", "wagon", "spike", "mushroom", "brick", "pipe", "cow"];
-  const availableTypes = types.slice(0, Math.min(types.length, 5 + difficulty));
+  const availableTypes = types.slice(0, Math.min(types.length, 7 + difficulty));
   const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
   state.obstacles.push(buildObstacle(type, WIDTH + 120 + Math.random() * 80));
 }
@@ -739,6 +739,9 @@ function drawHorse() {
   const x = horse.x;
   const groundY = horse.y;
   const invisibleFlash = state.invisibleUntil > state.frame && Math.floor(state.frame / 6) % 2 === 0;
+  const running = !state.gameOver && horse.onGround;
+  const stridePhase = running ? state.frame * 0.32 : Math.PI / 2;
+  const strideAmount = running ? 10 : 3;
   const bodyFill = invisibleFlash ? "#c8dced" : "#9b6338";
   const bodyStroke = invisibleFlash ? "#8ba1b3" : "#704522";
   ctx.fillStyle = bodyFill;
@@ -789,10 +792,16 @@ function drawHorse() {
 
   ctx.strokeStyle = bodyStroke;
   ctx.lineWidth = 6;
-  for (const legX of [44, 66, 94, 114]) {
+  for (const [index, legX] of [44, 66, 94, 114].entries()) {
+    const swing = Math.sin(stridePhase + (index % 2 === 0 ? 0 : Math.PI)) * strideAmount;
+    const kneeX = x + legX + swing * 0.45;
+    const kneeY = groundY - 12 - Math.abs(swing) * 0.18 - (running ? 0 : 6);
+    const hoofX = x + legX + swing;
+    const hoofY = groundY;
     ctx.beginPath();
     ctx.moveTo(x + legX, groundY - 24);
-    ctx.lineTo(x + legX, groundY);
+    ctx.lineTo(kneeX, kneeY);
+    ctx.lineTo(hoofX, hoofY);
     ctx.stroke();
   }
 

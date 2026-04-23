@@ -113,6 +113,17 @@ const state = {
     { x: 320, y: 52, size: 1.15, speed: 0.25 },
     { x: 690, y: 92, size: 0.92, speed: 0.3 },
   ],
+  birds: [
+    { x: 140, y: 120, size: 0.9, speed: 0.85, flap: 0.4 },
+    { x: 460, y: 98, size: 1.15, speed: 1.05, flap: 1.7 },
+    { x: 780, y: 148, size: 0.8, speed: 0.95, flap: 2.9 },
+  ],
+  meadowFloaters: [
+    { x: 120, y: GROUND_Y - 120, size: 1.05, speed: 0.55, phase: 0.2 },
+    { x: 380, y: GROUND_Y - 96, size: 0.9, speed: 0.7, phase: 1.4 },
+    { x: 690, y: GROUND_Y - 132, size: 1.1, speed: 0.5, phase: 2.5 },
+    { x: 910, y: GROUND_Y - 108, size: 0.85, speed: 0.62, phase: 3.1 },
+  ],
 };
 
 function ensureAudioReady() {
@@ -361,6 +372,7 @@ function getPerkCountdownState() {
     { name: "Fly", until: state.flyUntil },
     { name: "Magnet", until: state.magnetUntil },
     { name: "Blaster", until: state.blasterUntil },
+    { name: "Apple Power", until: state.powerModeUntil },
   ];
 
   for (const perk of activePerks) {
@@ -424,6 +436,7 @@ function buildObstacle(type, x) {
     mushroom: { width: 58, height: 42, color: "#d84b45" },
     brick: { width: 54, height: 54, color: "#c86c38" },
     pipe: { width: 56, height: 72, color: "#47ab45" },
+    cow: { width: 98, height: 68, color: "#fff6e7" },
   };
   const spec = specs[type];
   return {
@@ -434,13 +447,15 @@ function buildObstacle(type, x) {
     height: spec.height,
     color: spec.color,
     passed: false,
+    animSeed: Math.random() * Math.PI * 2,
   };
 }
 
 function spawnObstacle() {
   const difficulty = Math.min(8, Math.floor(state.score / 1200));
-  const types = ["hay", "crate", "barrel", "bush", "fence", "log", "hurdle", "wagon", "spike", "mushroom", "brick", "pipe"];
-  const type = types[Math.min(types.length - 1, Math.floor(Math.random() * (3 + difficulty / 2)))];
+  const types = ["hay", "crate", "barrel", "bush", "fence", "log", "hurdle", "wagon", "spike", "mushroom", "brick", "pipe", "cow"];
+  const availableTypes = types.slice(0, Math.min(types.length, 5 + difficulty));
+  const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
   state.obstacles.push(buildObstacle(type, WIDTH + 120 + Math.random() * 80));
 }
 
@@ -528,6 +543,24 @@ function updateWorld() {
     cloud.x -= cloud.speed;
     if (cloud.x < -120) {
       cloud.x = WIDTH + 60;
+    }
+  }
+
+  for (const bird of state.birds) {
+    bird.x -= bird.speed;
+    bird.flap += 0.18;
+    if (bird.x < -80) {
+      bird.x = WIDTH + 40 + Math.random() * 120;
+      bird.y = 86 + Math.random() * 84;
+    }
+  }
+
+  for (const floater of state.meadowFloaters) {
+    floater.x -= floater.speed;
+    floater.phase += 0.08;
+    if (floater.x < -30) {
+      floater.x = WIDTH + 30 + Math.random() * 100;
+      floater.y = GROUND_Y - 88 - Math.random() * 56;
     }
   }
 
@@ -665,6 +698,40 @@ function drawCloud(x, y, scale) {
   ctx.ellipse(x + 28 * scale, y - 8 * scale, 30 * scale, 20 * scale, 0, 0, Math.PI * 2);
   ctx.ellipse(x + 54 * scale, y, 32 * scale, 18 * scale, 0, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function drawBird(bird) {
+  const wingLift = Math.sin(bird.flap) * 6 * bird.size;
+  ctx.save();
+  ctx.translate(bird.x, bird.y);
+  ctx.strokeStyle = "rgba(78, 68, 55, 0.8)";
+  ctx.lineWidth = 2.4 * bird.size;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-14 * bird.size, 0);
+  ctx.quadraticCurveTo(-6 * bird.size, -wingLift, 0, 0);
+  ctx.quadraticCurveTo(6 * bird.size, -wingLift, 14 * bird.size, 0);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawMeadowFloater(floater) {
+  const bob = Math.sin(floater.phase) * 5;
+  ctx.save();
+  ctx.translate(floater.x, floater.y + bob);
+  ctx.scale(floater.size, floater.size);
+  ctx.fillStyle = "rgba(255, 245, 207, 0.55)";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 12, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#f4c24f";
+  ctx.beginPath();
+  ctx.ellipse(-8, 0, 8, 5, -0.35, 0, Math.PI * 2);
+  ctx.ellipse(8, 0, 8, 5, 0.35, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#4b3422";
+  ctx.fillRect(-1, -1, 2, 7);
+  ctx.restore();
 }
 
 function drawHorse() {
@@ -914,6 +981,59 @@ function drawObstacle(obstacle) {
     return;
   }
 
+  if (obstacle.type === "cow") {
+    const stride = Math.sin(state.frame * 0.24 + obstacle.animSeed) * 5;
+    const headBob = Math.sin(state.frame * 0.18 + obstacle.animSeed) * 2;
+    ctx.fillStyle = "#b6976c";
+    for (const [legX, offset] of [[18, stride], [36, -stride], [62, -stride], [78, stride]]) {
+      ctx.fillRect(obstacle.x + legX, obstacle.y + 34 + Math.max(0, offset), 8, obstacle.height - 34 - Math.max(0, -offset));
+    }
+
+    ctx.fillStyle = "#fff8ef";
+    ctx.strokeStyle = "#6d5137";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(obstacle.x + 10, obstacle.y + 12, obstacle.width - 24, 34, 14);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#5a3d29";
+    ctx.beginPath();
+    ctx.ellipse(obstacle.x + 28, obstacle.y + 26, 10, 7, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(obstacle.x + 52, obstacle.y + 32, 12, 8, 0.25, 0, Math.PI * 2);
+    ctx.ellipse(obstacle.x + 70, obstacle.y + 22, 8, 6, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#fff8ef";
+    ctx.beginPath();
+    ctx.roundRect(obstacle.x + obstacle.width - 34, obstacle.y + 16 + headBob, 24, 22, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#f4c8b4";
+    ctx.beginPath();
+    ctx.roundRect(obstacle.x + obstacle.width - 30, obstacle.y + 27 + headBob, 16, 10, 5);
+    ctx.fill();
+
+    ctx.fillStyle = "#2f241b";
+    ctx.beginPath();
+    ctx.arc(obstacle.x + obstacle.width - 24, obstacle.y + 24 + headBob, 2.2, 0, Math.PI * 2);
+    ctx.arc(obstacle.x + obstacle.width - 17, obstacle.y + 24 + headBob, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#6d5137";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + obstacle.width - 28, obstacle.y + 17 + headBob);
+    ctx.lineTo(obstacle.x + obstacle.width - 33, obstacle.y + 10 + headBob);
+    ctx.moveTo(obstacle.x + obstacle.width - 14, obstacle.y + 17 + headBob);
+    ctx.lineTo(obstacle.x + obstacle.width - 9, obstacle.y + 10 + headBob);
+    ctx.moveTo(obstacle.x + 8, obstacle.y + 18);
+    ctx.quadraticCurveTo(obstacle.x - 4, obstacle.y + 10, obstacle.x + 4, obstacle.y + 34);
+    ctx.stroke();
+    return;
+  }
+
   ctx.fillStyle = obstacle.color;
   ctx.strokeStyle = obstacle.type === "pipe" ? "#155d22" : "#653f1f";
   ctx.lineWidth = 3;
@@ -1033,10 +1153,18 @@ function drawScene() {
     drawCloud(cloud.x, cloud.y, cloud.size);
   }
 
+  for (const bird of state.birds) {
+    drawBird(bird);
+  }
+
   ctx.fillStyle = theme.ground;
   ctx.fillRect(0, GROUND_Y, WIDTH, HEIGHT - GROUND_Y);
   ctx.fillStyle = theme.ground2;
   ctx.fillRect(0, GROUND_Y + 20, WIDTH, HEIGHT - GROUND_Y - 20);
+
+  for (const floater of state.meadowFloaters) {
+    drawMeadowFloater(floater);
+  }
 
   for (const obstacle of state.obstacles) drawObstacle(obstacle);
   for (const pickup of state.pickups) drawPickup(pickup);

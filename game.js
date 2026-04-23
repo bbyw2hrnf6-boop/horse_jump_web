@@ -60,6 +60,8 @@ const leaderboard = new LeaderboardService();
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
 const GROUND_Y = 392;
+const OBSTACLE_SCALE = 1.14;
+const PICKUP_SCALE = 1.16;
 const PERK_COSTS = { fly: 35, magnet: 28, blaster: 32 };
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 
@@ -100,6 +102,7 @@ const state = {
   blasterUntil: 0,
   invisibleUntil: 0,
   powerModeUntil: 0,
+  rottenBoostUntil: 0,
   nextShotFrame: 0,
   obstacles: [],
   coinsInWorld: [],
@@ -227,6 +230,12 @@ function playAppleSound() {
   playTone({ frequency: 1046.5, duration: 0.12, type: "triangle", volume: 0.06, when: 0.14 });
 }
 
+function playRottenAppleSound() {
+  playTone({ frequency: 220, duration: 0.08, type: "sawtooth", volume: 0.05, slideTo: 280 });
+  playTone({ frequency: 329.63, duration: 0.1, type: "square", volume: 0.05, when: 0.06 });
+  playTone({ frequency: 440, duration: 0.14, type: "sawtooth", volume: 0.05, when: 0.14, slideTo: 659.25 });
+}
+
 function getAreaMusicPattern(area) {
   const patterns = [
     { lead: [261.63, 329.63, 392, 440, 392, 329.63, 293.66, 349.23], bass: [130.81, 98, 110, 98] },
@@ -238,8 +247,15 @@ function getAreaMusicPattern(area) {
     lead: [523.25, 659.25, 783.99, 987.77, 880, 783.99, 698.46, 880, 1046.5, 1174.66, 1046.5, 880],
     bass: [130.81, 164.81, 196, 246.94, 164.81, 220],
   };
+  const rottenPattern = {
+    lead: [392, 493.88, 587.33, 783.99, 659.25, 587.33, 523.25, 659.25],
+    bass: [98, 123.47, 146.83, 164.81],
+  };
   if (area === "power") {
     return powerPattern;
+  }
+  if (area === "rotten") {
+    return rottenPattern;
   }
   return patterns[area % patterns.length];
 }
@@ -332,6 +348,7 @@ function resetGame() {
   state.blasterUntil = 0;
   state.invisibleUntil = 0;
   state.powerModeUntil = 0;
+  state.rottenBoostUntil = 0;
   state.nextShotFrame = 0;
   state.obstacles = [];
   state.coinsInWorld = [];
@@ -361,6 +378,7 @@ function getAreaTheme() {
 }
 
 function getActivePerk() {
+  if (state.rottenBoostUntil > state.frame) return `Turbo Apple ${Math.ceil((state.rottenBoostUntil - state.frame) / 60)}s`;
   if (state.flyUntil > state.frame) return `Fly ${Math.ceil((state.flyUntil - state.frame) / 60)}s`;
   if (state.magnetUntil > state.frame) return `Magnet ${Math.ceil((state.magnetUntil - state.frame) / 60)}s`;
   if (state.blasterUntil > state.frame) return `Blaster ${Math.ceil((state.blasterUntil - state.frame) / 60)}s`;
@@ -369,6 +387,7 @@ function getActivePerk() {
 
 function getPerkCountdownState() {
   const activePerks = [
+    { name: "Turbo Apple", until: state.rottenBoostUntil },
     { name: "Fly", until: state.flyUntil },
     { name: "Magnet", until: state.magnetUntil },
     { name: "Blaster", until: state.blasterUntil },
@@ -439,12 +458,14 @@ function buildObstacle(type, x) {
     cow: { width: 98, height: 68, color: "#fff6e7" },
   };
   const spec = specs[type];
+  const width = Math.round(spec.width * OBSTACLE_SCALE);
+  const height = Math.round(spec.height * OBSTACLE_SCALE);
   return {
     type,
     x,
-    y: GROUND_Y - spec.height,
-    width: spec.width,
-    height: spec.height,
+    y: GROUND_Y - height,
+    width,
+    height,
     color: spec.color,
     passed: false,
     animSeed: Math.random() * Math.PI * 2,
@@ -466,7 +487,7 @@ function spawnCoins() {
     state.coinsInWorld.push({
       x: startX + index * 34,
       y: baseY - Math.abs(index - 1.5) * 14,
-      size: 10,
+      size: 11.5,
       spin: index * 5,
     });
   }
@@ -474,11 +495,13 @@ function spawnCoins() {
 
 function spawnApple() {
   const yOptions = [GROUND_Y - 90, GROUND_Y - 145, GROUND_Y - 200];
+  const rotten = Math.random() < 0.34;
   state.pickups.push({
     x: WIDTH + 120 + Math.random() * 140,
     y: yOptions[Math.floor(Math.random() * yOptions.length)],
-    size: 16,
+    size: Math.round(16 * PICKUP_SCALE),
     pulse: Math.random() * Math.PI * 2,
+    kind: rotten ? "rotten" : "apple",
   });
 }
 
@@ -488,6 +511,13 @@ function activateApplePower() {
   state.status = "Apple power active: invisibility for 10 seconds.";
   playAppleSound();
   startAreaMusic("power", true);
+}
+
+function activateRottenApplePower() {
+  state.rottenBoostUntil = state.frame + 5 * 60;
+  state.status = "Fauler Apfel: Turbo-Speed fuer 5 Sekunden.";
+  playRottenAppleSound();
+  startAreaMusic("rotten", true);
 }
 
 function updateHorse() {
@@ -514,9 +544,12 @@ function updateWorld() {
   state.frame += 1;
   const previousArea = state.area;
   state.area = Math.floor(state.score / 2500) % 4;
-  state.worldSpeed = 7 + Math.min(8, Math.floor(state.score / 2500)) * 0.5;
+  const baseWorldSpeed = 7 + Math.min(8, Math.floor(state.score / 2500)) * 0.5;
+  state.worldSpeed = baseWorldSpeed + (state.rottenBoostUntil > state.frame ? 3.2 : 0);
   state.score += 1;
-  const desiredMusic = state.powerModeUntil > state.frame ? "power" : state.area;
+  const desiredMusic = state.rottenBoostUntil > state.frame
+    ? "rotten"
+    : (state.powerModeUntil > state.frame ? "power" : state.area);
   if (desiredMusic !== audioState.currentArea || state.area !== previousArea) {
     startAreaMusic(desiredMusic, true);
   }
@@ -649,7 +682,11 @@ function checkCollisions() {
     );
     if (overlap) {
       state.pickups.splice(state.pickups.indexOf(pickup), 1);
-      activateApplePower();
+      if (pickup.kind === "rotten") {
+        activateRottenApplePower();
+      } else {
+        activateApplePower();
+      }
       state.score += 120;
     }
   }
@@ -1108,18 +1145,27 @@ function drawCoin(coin) {
 
 function drawPickup(pickup) {
   const glow = 1 + Math.sin(pickup.pulse) * 0.12;
-  ctx.fillStyle = "rgba(255, 214, 190, 0.35)";
+  const isRotten = pickup.kind === "rotten";
+  ctx.fillStyle = isRotten ? "rgba(176, 210, 126, 0.35)" : "rgba(255, 214, 190, 0.35)";
   ctx.beginPath();
   ctx.arc(pickup.x, pickup.y, pickup.size * 1.35 * glow, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#df3939";
-  ctx.strokeStyle = "#9b1f1f";
+  ctx.fillStyle = isRotten ? "#8fb14a" : "#df3939";
+  ctx.strokeStyle = isRotten ? "#536d23" : "#9b1f1f";
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.arc(pickup.x, pickup.y, pickup.size, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
+
+  if (isRotten) {
+    ctx.fillStyle = "#6d4f1d";
+    ctx.beginPath();
+    ctx.arc(pickup.x - pickup.size * 0.25, pickup.y - pickup.size * 0.1, pickup.size * 0.2, 0, Math.PI * 2);
+    ctx.arc(pickup.x + pickup.size * 0.18, pickup.y + pickup.size * 0.22, pickup.size * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   ctx.fillStyle = "#5f8d34";
   ctx.fillRect(pickup.x - 2, pickup.y - pickup.size - 6, 4, 8);

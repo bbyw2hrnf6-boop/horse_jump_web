@@ -499,7 +499,7 @@ function spawnCoins() {
 
 function spawnApple() {
   const yOptions = [GROUND_Y - 90, GROUND_Y - 145, GROUND_Y - 200];
-  const rotten = Math.random() < 0.16;
+  const rotten = Math.random() < 0.22;
   state.pickups.push({
     x: WIDTH + 120 + Math.random() * 140,
     y: yOptions[Math.floor(Math.random() * yOptions.length)],

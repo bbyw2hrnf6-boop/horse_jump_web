@@ -42,7 +42,7 @@ class LeaderboardService {
         const topScoresQuery = this.firebaseFns.query(
           scoresRef,
           this.firebaseFns.orderBy("score", "desc"),
-          this.firebaseFns.limit(10),
+          this.firebaseFns.limit(20),
         );
         const snapshot = await this.firebaseFns.getDocs(topScoresQuery);
         const scores = snapshot.docs.map((doc) => {
@@ -106,6 +106,7 @@ class LeaderboardService {
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+let lastCanvasTouchEndAt = 0;
 
 const scoreValue = document.getElementById("scoreValue");
 const coinValue = document.getElementById("coinValue");
@@ -1833,7 +1834,7 @@ function syncHud() {
 async function renderLeaderboard() {
   const scores = await leaderboard.listTopScores();
   leaderboardList.innerHTML = "";
-  for (const entry of scores.slice(0, 10)) {
+  for (const entry of scores.slice(0, 20)) {
     const item = document.createElement("li");
     item.textContent = `${entry.name} - ${entry.score}`;
     leaderboardList.appendChild(item);
@@ -1953,6 +1954,18 @@ canvas.addEventListener("pointerdown", () => {
   } else if (!state.awaitingScoreEntry) {
     jump();
   }
+});
+
+canvas.addEventListener("touchend", (event) => {
+  const now = Date.now();
+  if (now - lastCanvasTouchEndAt < 320) {
+    event.preventDefault();
+  }
+  lastCanvasTouchEndAt = now;
+}, { passive: false });
+
+canvas.addEventListener("dblclick", (event) => {
+  event.preventDefault();
 });
 
 restartButton.addEventListener("click", () => {

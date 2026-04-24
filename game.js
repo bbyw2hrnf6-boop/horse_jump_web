@@ -172,6 +172,7 @@ const state = {
   magnetUntil: 0,
   blasterUntil: 0,
   invisibleUntil: 0,
+  invisibilityGraceUntil: 0,
   powerModeUntil: 0,
   rottenBoostUntil: 0,
   bullUntil: 0,
@@ -465,6 +466,7 @@ function resetGame() {
   state.magnetUntil = 0;
   state.blasterUntil = 0;
   state.invisibleUntil = 0;
+  state.invisibilityGraceUntil = 0;
   state.powerModeUntil = 0;
   state.rottenBoostUntil = 0;
   state.bullUntil = 0;
@@ -675,6 +677,7 @@ function spawnMeat() {
 
 function activateApplePower() {
   state.invisibleUntil = state.frame + 10 * 60;
+  state.invisibilityGraceUntil = state.frame + 11 * 60;
   state.powerModeUntil = state.frame + 10 * 60;
   state.status = "Apple power active: invisibility for 10 seconds.";
   playAppleSound();
@@ -683,6 +686,7 @@ function activateApplePower() {
 
 function activateRottenApplePower() {
   state.rottenBoostUntil = state.frame + 5 * 60;
+  state.invisibilityGraceUntil = Math.max(state.invisibilityGraceUntil, state.frame + 6 * 60);
   state.status = "Fauler Apfel: Turbo-Speed fuer 5 Sekunden.";
   playRottenAppleSound();
   startAreaMusic("rotten", true);
@@ -947,7 +951,7 @@ function checkCollisions() {
         playSmashSound();
         continue;
       }
-      if (state.invisibleUntil > state.frame) {
+      if (state.invisibleUntil > state.frame || state.invisibilityGraceUntil > state.frame) {
         continue;
       }
       state.gameOver = true;
@@ -1031,6 +1035,20 @@ function drawHorse() {
   ctx.lineWidth = 3;
 
   if (bullMode) {
+    ctx.fillStyle = "#f0bf43";
+    ctx.strokeStyle = "#7b3f16";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(x + 134, groundY - 92, 32, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillRect(x + 110, groundY - 104, 48, 10);
+    ctx.strokeRect(x + 110, groundY - 104, 48, 10);
+    ctx.fillStyle = "#d65b2a";
+    ctx.fillRect(x + 116, groundY - 100, 8, 4);
+    ctx.fillRect(x + 128, groundY - 100, 8, 4);
+    ctx.fillRect(x + 140, groundY - 100, 8, 4);
+
     ctx.fillStyle = "#5b2e26";
     ctx.strokeStyle = "#2b150f";
     ctx.lineWidth = 4;

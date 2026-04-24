@@ -154,6 +154,7 @@ const state = {
   scoreSubmitted: false,
   gameOverHandled: false,
   awaitingScoreEntry: false,
+  forcedScoreSave: false,
   status: "Press Space or tap to jump.",
   worldSpeed: 7,
   horse: {
@@ -451,6 +452,7 @@ function resetGame() {
   state.scoreSubmitted = false;
   state.gameOverHandled = false;
   state.awaitingScoreEntry = false;
+  state.forcedScoreSave = false;
   state.status = FRIDAY_EVENT_ACTIVE
     ? "Friday special active: find meat to become a bull."
     : "Press Space or tap to jump.";
@@ -1777,10 +1779,12 @@ function syncHud() {
   perkValue.textContent = getActivePerk();
   statusText.textContent = state.status;
   scoreSubmitButton.textContent = state.awaitingScoreEntry
-    ? (isMobileLayout ? "Confirm Result / Restart" : "Confirm Result")
+    ? (state.forcedScoreSave ? "Save Top Score" : (isMobileLayout ? "Confirm Result / Restart" : "Confirm Result"))
     : "Confirm";
   scorePromptText.textContent = state.awaitingScoreEntry
-    ? "Game paused. Enter a name and confirm to save, or press Space / confirm empty to restart."
+    ? (state.forcedScoreSave
+      ? "Top 3 score: enter a player name and save it to continue."
+      : "Game paused. Enter a name and confirm to save, or press Space / confirm empty to restart.")
     : "Enter a name after game over to save your score.";
   playerNameInput.disabled = !state.awaitingScoreEntry;
   scoreSubmitButton.disabled = !state.awaitingScoreEntry;
@@ -1807,10 +1811,24 @@ async function renderLeaderboard() {
   leaderboardMode.textContent = `Mode: ${leaderboard.mode} leaderboard`;
 }
 
+async function isTopThreeScore(score) {
+  const scores = await leaderboard.listTopScores();
+  if (scores.length < 3) {
+    return score > 0;
+  }
+  const thirdScore = scores[2]?.score ?? -Infinity;
+  return score > thirdScore;
+}
+
 async function submitCurrentScore() {
   if (!state.awaitingScoreEntry || state.scoreSubmitted || state.score <= 0) return;
   const enteredName = playerNameInput.value.trim();
   if (!enteredName) {
+    if (state.forcedScoreSave) {
+      state.status = "Top 3 score: enter a player name to continue.";
+      playerNameInput.focus();
+      return;
+    }
     state.scoreSubmitted = true;
     state.awaitingScoreEntry = false;
     state.status = "No name entered, score skipped. Restarting.";
@@ -1836,9 +1854,14 @@ function tick() {
   if (state.gameOver && !state.gameOverHandled) {
     state.gameOverHandled = true;
     state.awaitingScoreEntry = true;
-    state.status = "Game over. Enter your name, then confirm your result.";
-    playerNameInput.focus();
-    playerNameInput.select();
+    Promise.resolve(isTopThreeScore(state.score)).then((mustSave) => {
+      state.forcedScoreSave = mustSave;
+      state.status = mustSave
+        ? "Top 3 score. Enter a player name to save it. This is mandatory."
+        : "Game over. Enter your name to save, or leave it empty to skip.";
+      playerNameInput.focus();
+      playerNameInput.select();
+    });
   }
   requestAnimationFrame(tick);
 }
@@ -1847,7 +1870,7 @@ document.addEventListener("keydown", (event) => {
   unlockAudio();
   if (event.code === "Space") {
     event.preventDefault();
-    if (state.gameOver && state.awaitingScoreEntry && !playerNameInput.value.trim()) {
+    if (state.gameOver && state.awaitingScoreEntry && !playerNameInput.value.trim() && !state.forcedScoreSave) {
       state.scoreSubmitted = true;
       state.awaitingScoreEntry = false;
       state.status = "No name entered, score skipped. Restarting.";

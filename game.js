@@ -1,16 +1,78 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  serverTimestamp,
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
 const LOCAL_STORAGE_KEY = "horse-jump-web-local-leaderboard";
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAukUvsI-plRUwP_dX34v-xGe34yERqoSI",
+  authDomain: "horse-jump-scoreboard.firebaseapp.com",
+  projectId: "horse-jump-scoreboard",
+  storageBucket: "horse-jump-scoreboard.firebasestorage.app",
+  messagingSenderId: "987391243862",
+  appId: "1:987391243862:web:dc172a9e30d846c74eadf7",
+};
+const FIRESTORE_COLLECTION = "leaderboardScores";
 
 class LeaderboardService {
   constructor() {
-    this.mode = "local";
+    this.mode = "firebase";
+    this.db = null;
+    this.firebaseReady = false;
+    try {
+      const app = initializeApp(FIREBASE_CONFIG);
+      this.db = getFirestore(app);
+      this.firebaseReady = true;
+    } catch (_error) {
+      this.mode = "local";
+    }
   }
 
   async listTopScores() {
+    if (this.firebaseReady && this.db) {
+      try {
+        const scoresRef = collection(this.db, FIRESTORE_COLLECTION);
+        const topScoresQuery = query(scoresRef, orderBy("score", "desc"), limit(10));
+        const snapshot = await getDocs(topScoresQuery);
+        const scores = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            name: typeof data.name === "string" ? data.name : "Player",
+            score: Number.isFinite(data.score) ? data.score : 0,
+            createdAt: data.createdAt?.toDate?.()?.toISOString?.() || null,
+          };
+        });
+        this.mode = "firebase";
+        return scores;
+      } catch (_error) {
+        this.mode = "local-fallback";
+      }
+    }
     return this.readLocalScores();
   }
 
   async submitScore(name, score) {
     const safeName = (name || "Player").trim().slice(0, 14) || "Player";
+    if (this.firebaseReady && this.db) {
+      try {
+        await addDoc(collection(this.db, FIRESTORE_COLLECTION), {
+          name: safeName,
+          score,
+          createdAt: serverTimestamp(),
+        });
+        this.mode = "firebase";
+        return this.listTopScores();
+      } catch (_error) {
+        this.mode = "local-fallback";
+      }
+    }
     const entries = this.readLocalScores();
     entries.push({
       name: safeName,

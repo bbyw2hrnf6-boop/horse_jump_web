@@ -106,7 +106,6 @@ class LeaderboardService {
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-let lastCanvasTouchEndAt = 0;
 
 const scoreValue = document.getElementById("scoreValue");
 const coinValue = document.getElementById("coinValue");
@@ -1947,7 +1946,10 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-canvas.addEventListener("pointerdown", () => {
+canvas.addEventListener("pointerdown", (event) => {
+  if (event.pointerType === "touch") {
+    return;
+  }
   unlockAudio();
   if (state.gameOver && !state.awaitingScoreEntry) {
     resetGame();
@@ -1956,12 +1958,14 @@ canvas.addEventListener("pointerdown", () => {
   }
 });
 
-canvas.addEventListener("touchend", (event) => {
-  const now = Date.now();
-  if (now - lastCanvasTouchEndAt < 320) {
-    event.preventDefault();
+canvas.addEventListener("touchstart", (event) => {
+  event.preventDefault();
+  unlockAudio();
+  if (state.gameOver && !state.awaitingScoreEntry) {
+    resetGame();
+  } else if (!state.awaitingScoreEntry) {
+    jump();
   }
-  lastCanvasTouchEndAt = now;
 }, { passive: false });
 
 canvas.addEventListener("dblclick", (event) => {

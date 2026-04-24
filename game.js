@@ -1,15 +1,3 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
-
 const LOCAL_STORAGE_KEY = "horse-jump-web-local-leaderboard";
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyAukUvsI-plRUwP_dX34v-xGe34yERqoSI",
@@ -23,24 +11,40 @@ const FIRESTORE_COLLECTION = "leaderboardScores";
 
 class LeaderboardService {
   constructor() {
-    this.mode = "firebase";
+    this.mode = "initializing";
     this.db = null;
     this.firebaseReady = false;
+    this.firebaseFns = null;
+    this.ready = this.initFirebase();
+  }
+
+  async initFirebase() {
     try {
+      const [{ initializeApp }, firestoreModule] = await Promise.all([
+        import("https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js"),
+        import("https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js"),
+      ]);
       const app = initializeApp(FIREBASE_CONFIG);
-      this.db = getFirestore(app);
+      this.db = firestoreModule.getFirestore(app);
+      this.firebaseFns = firestoreModule;
       this.firebaseReady = true;
+      this.mode = "firebase";
     } catch (_error) {
       this.mode = "local";
     }
   }
 
   async listTopScores() {
-    if (this.firebaseReady && this.db) {
+    await this.ready;
+    if (this.firebaseReady && this.db && this.firebaseFns) {
       try {
-        const scoresRef = collection(this.db, FIRESTORE_COLLECTION);
-        const topScoresQuery = query(scoresRef, orderBy("score", "desc"), limit(10));
-        const snapshot = await getDocs(topScoresQuery);
+        const scoresRef = this.firebaseFns.collection(this.db, FIRESTORE_COLLECTION);
+        const topScoresQuery = this.firebaseFns.query(
+          scoresRef,
+          this.firebaseFns.orderBy("score", "desc"),
+          this.firebaseFns.limit(10),
+        );
+        const snapshot = await this.firebaseFns.getDocs(topScoresQuery);
         const scores = snapshot.docs.map((doc) => {
           const data = doc.data();
           return {
@@ -60,12 +64,13 @@ class LeaderboardService {
 
   async submitScore(name, score) {
     const safeName = (name || "Player").trim().slice(0, 14) || "Player";
-    if (this.firebaseReady && this.db) {
+    await this.ready;
+    if (this.firebaseReady && this.db && this.firebaseFns) {
       try {
-        await addDoc(collection(this.db, FIRESTORE_COLLECTION), {
+        await this.firebaseFns.addDoc(this.firebaseFns.collection(this.db, FIRESTORE_COLLECTION), {
           name: safeName,
           score,
-          createdAt: serverTimestamp(),
+          createdAt: this.firebaseFns.serverTimestamp(),
         });
         this.mode = "firebase";
         return this.listTopScores();

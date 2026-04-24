@@ -63,7 +63,7 @@ const GROUND_Y = 392;
 const OBSTACLE_SCALE = 1.24;
 const PICKUP_SCALE = 1.16;
 const FRIDAY_EVENT_ACTIVE = new Date().getDay() === 5;
-const PERK_COSTS = { fly: 35, magnet: 28, blaster: 32 };
+const PERK_COSTS = { fly: 35, magnet: 8, blaster: 32 };
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 
 const audioState = {
@@ -140,11 +140,11 @@ function ensureAudioReady() {
 
   audioState.context = new AudioContextClass();
   audioState.master = audioState.context.createGain();
-  audioState.master.gain.value = 0.18;
+  audioState.master.gain.value = 0.24;
   audioState.master.connect(audioState.context.destination);
 
   audioState.musicGain = audioState.context.createGain();
-  audioState.musicGain.gain.value = 0.32;
+  audioState.musicGain.gain.value = 0.62;
   audioState.musicGain.connect(audioState.master);
 }
 
@@ -244,6 +244,32 @@ function playBullSound() {
   playTone({ frequency: 146.83, duration: 0.16, type: "sawtooth", volume: 0.06, slideTo: 196 });
   playTone({ frequency: 220, duration: 0.12, type: "square", volume: 0.05, when: 0.07, slideTo: 329.63 });
   playTone({ frequency: 329.63, duration: 0.14, type: "sawtooth", volume: 0.05, when: 0.16, slideTo: 493.88 });
+}
+
+function playRestartSound() {
+  playTone({ frequency: 392, duration: 0.05, type: "square", volume: 0.045 });
+  playTone({ frequency: 523.25, duration: 0.06, type: "square", volume: 0.045, when: 0.05 });
+  playTone({ frequency: 659.25, duration: 0.08, type: "triangle", volume: 0.04, when: 0.1 });
+}
+
+function playSaveSound() {
+  playTone({ frequency: 523.25, duration: 0.05, type: "triangle", volume: 0.045 });
+  playTone({ frequency: 659.25, duration: 0.05, type: "triangle", volume: 0.045, when: 0.04 });
+  playTone({ frequency: 783.99, duration: 0.08, type: "triangle", volume: 0.045, when: 0.08 });
+}
+
+function playErrorSound() {
+  playTone({ frequency: 220, duration: 0.07, type: "square", volume: 0.04 });
+  playTone({ frequency: 185, duration: 0.09, type: "square", volume: 0.04, when: 0.05 });
+}
+
+function playSmashSound() {
+  playTone({ frequency: 110, duration: 0.08, type: "sawtooth", volume: 0.05, slideTo: 90 });
+  playTone({ frequency: 164.81, duration: 0.06, type: "triangle", volume: 0.035, when: 0.03 });
+}
+
+function playSpawnSound() {
+  playTone({ frequency: 300, duration: 0.04, type: "triangle", volume: 0.022, slideTo: 240 });
 }
 
 function getAreaMusicPattern(area) {
@@ -361,7 +387,7 @@ function resetGame() {
   state.status = FRIDAY_EVENT_ACTIVE
     ? "Friday special active: find meat to become a bull."
     : "Press Space or tap to jump.";
-  state.worldSpeed = 7;
+  state.worldSpeed = 7.45;
   state.flyUntil = 0;
   state.magnetUntil = 0;
   state.blasterUntil = 0;
@@ -402,10 +428,24 @@ function getAreaTheme() {
 function getActivePerk() {
   if (state.bullUntil > state.frame) return `Friday Bull ${Math.ceil((state.bullUntil - state.frame) / 60)}s`;
   if (state.rottenBoostUntil > state.frame) return `Turbo Apple ${Math.ceil((state.rottenBoostUntil - state.frame) / 60)}s`;
+  if (state.powerModeUntil > state.frame) return `Apple Power ${Math.ceil((state.powerModeUntil - state.frame) / 60)}s`;
   if (state.flyUntil > state.frame) return `Fly ${Math.ceil((state.flyUntil - state.frame) / 60)}s`;
   if (state.magnetUntil > state.frame) return `Magnet ${Math.ceil((state.magnetUntil - state.frame) / 60)}s`;
   if (state.blasterUntil > state.frame) return `Blaster ${Math.ceil((state.blasterUntil - state.frame) / 60)}s`;
   return "None";
+}
+
+function hasAnyActivePerk() {
+  return state.bullUntil > state.frame
+    || state.rottenBoostUntil > state.frame
+    || state.powerModeUntil > state.frame
+    || state.flyUntil > state.frame
+    || state.magnetUntil > state.frame
+    || state.blasterUntil > state.frame;
+}
+
+function hasAppleFamilyPerkActive() {
+  return state.powerModeUntil > state.frame || state.rottenBoostUntil > state.frame;
 }
 
 function getPerkCountdownState() {
@@ -432,8 +472,14 @@ function getPerkCountdownState() {
 
 function tryActivatePerk(perkName) {
   if (state.gameOver) return;
+  if (hasAnyActivePerk()) {
+    state.status = "Only one perk can be active at a time.";
+    playErrorSound();
+    return;
+  }
   if (state.coins < PERK_COSTS[perkName]) {
     state.status = `Need ${PERK_COSTS[perkName]} coins for ${perkName}.`;
+    playErrorSound();
     return;
   }
 
@@ -474,11 +520,12 @@ function buildObstacle(type, x) {
     fence: { width: 58, height: 56, color: "#9c7045" },
     log: { width: 62, height: 30, color: "#7b5230" },
     hurdle: { width: 70, height: 50, color: "#b28a57" },
-    wagon: { width: 84, height: 52, color: "#d2b15d" },
+    farmer: { width: 70, height: 94, color: "#5d78b8" },
+    tractor: { width: 118, height: 78, color: "#59a53f" },
     spike: { width: 48, height: 28, color: "#d7dbe2" },
-    mushroom: { width: 58, height: 42, color: "#d84b45" },
-    brick: { width: 54, height: 54, color: "#c86c38" },
-    pipe: { width: 56, height: 72, color: "#47ab45" },
+    sheep: { width: 92, height: 66, color: "#f7f2ea" },
+    scarecrow: { width: 74, height: 98, color: "#c86c38" },
+    rooster: { width: 60, height: 58, color: "#47ab45" },
     cow: { width: 98, height: 68, color: "#fff6e7" },
   };
   const spec = specs[type];
@@ -498,7 +545,7 @@ function buildObstacle(type, x) {
 
 function spawnObstacle() {
   const difficulty = Math.min(8, Math.floor(state.score / 1200));
-  const types = ["hay", "crate", "barrel", "bush", "fence", "log", "hurdle", "wagon", "spike", "mushroom", "brick", "pipe", "cow"];
+  const types = ["hay", "crate", "barrel", "bush", "fence", "log", "hurdle", "farmer", "tractor", "spike", "sheep", "scarecrow", "rooster", "cow"];
   const availableTypes = types.slice(0, Math.min(types.length, 7 + difficulty));
   const cowUnlocked = state.score >= 2600;
   const spawnCow = cowUnlocked && Math.random() < 0.18;
@@ -506,6 +553,9 @@ function spawnObstacle() {
     ? "cow"
     : availableTypes[Math.floor(Math.random() * availableTypes.length)];
   state.obstacles.push(buildObstacle(type, WIDTH + 120 + Math.random() * 80));
+  if (Math.random() < 0.28) {
+    playSpawnSound();
+  }
 }
 
 function spawnCoins() {
@@ -522,6 +572,9 @@ function spawnCoins() {
 }
 
 function spawnApple() {
+  if (hasAnyActivePerk()) {
+    return;
+  }
   const yOptions = [GROUND_Y - 90, GROUND_Y - 145, GROUND_Y - 200];
   const rotten = Math.random() < 0.22;
   state.pickups.push({
@@ -534,6 +587,9 @@ function spawnApple() {
 }
 
 function spawnMeat() {
+  if (hasAnyActivePerk()) {
+    return;
+  }
   const yOptions = [GROUND_Y - 82, GROUND_Y - 138, GROUND_Y - 190];
   state.pickups.push({
     x: WIDTH + 150 + Math.random() * 150,
@@ -610,7 +666,7 @@ function updateWorld() {
   if (FRIDAY_EVENT_ACTIVE && state.area !== previousArea && state.frame > 1) {
     spawnCelebrationBurst(WIDTH * 0.5, 84, ["#ffd54f", "#f06292", "#4fc3f7", "#ffffff"]);
   }
-  const baseWorldSpeed = 7 + Math.min(8, Math.floor(state.score / 2500)) * 0.5;
+  const baseWorldSpeed = 7.45 + Math.min(8, Math.floor(state.score / 2500)) * 0.5;
   state.worldSpeed = baseWorldSpeed
     + (state.rottenBoostUntil > state.frame ? 3.2 : 0)
     + (state.bullUntil > state.frame ? 4.4 : 0);
@@ -702,6 +758,9 @@ function updateWorld() {
   for (const pickup of state.pickups) {
     pickup.x -= state.worldSpeed;
     pickup.pulse += 0.12;
+  }
+  if (hasAnyActivePerk()) {
+    state.pickups = state.pickups.filter((pickup) => pickup.kind !== "apple" && pickup.kind !== "rotten" && pickup.kind !== "meat");
   }
   state.pickups = state.pickups.filter((pickup) => pickup.x > -40);
 
@@ -812,6 +871,7 @@ function checkCollisions() {
         spawnCelebrationBurst(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2, ["#ff7043", "#ffeb3b", "#ffffff"]);
         state.obstacles.splice(state.obstacles.indexOf(obstacle), 1);
         state.score += 42;
+        playSmashSound();
         continue;
       }
       if (state.invisibleUntil > state.frame) {
@@ -892,6 +952,10 @@ function drawHorse() {
       ctx.fill();
     }
   }
+
+  ctx.fillStyle = bodyFill;
+  ctx.strokeStyle = bodyStroke;
+  ctx.lineWidth = 3;
 
   if (bullMode) {
     ctx.fillStyle = "#5b2e26";
@@ -1182,28 +1246,165 @@ function drawObstacle(obstacle) {
     return;
   }
 
-  if (obstacle.type === "wagon") {
-    ctx.fillStyle = "#d2b15d";
-    ctx.strokeStyle = "#8a6635";
-    ctx.lineWidth = 3;
-    ctx.fillRect(obstacle.x + 8, obstacle.y + 8, obstacle.width - 16, obstacle.height - 10);
-    ctx.strokeRect(obstacle.x + 8, obstacle.y + 8, obstacle.width - 16, obstacle.height - 10);
-    ctx.strokeStyle = "#a98345";
+  if (obstacle.type === "farmer") {
+    const bounce = Math.sin(state.frame * 0.2 + obstacle.animSeed) * 2.5;
+    ctx.fillStyle = "#6f4a2f";
+    ctx.fillRect(obstacle.x + obstacle.width / 2 - 6, obstacle.y + 54 + bounce, 9, obstacle.height - 54 - bounce);
+    ctx.fillRect(obstacle.x + obstacle.width / 2 - 22, obstacle.y + 54 - bounce, 9, obstacle.height - 54 + bounce);
+    ctx.fillStyle = "#5b78b8";
     ctx.beginPath();
-    ctx.moveTo(obstacle.x + 18, obstacle.y + 18);
-    ctx.lineTo(obstacle.x + obstacle.width - 18, obstacle.y + 18);
-    ctx.moveTo(obstacle.x + 18, obstacle.y + 30);
-    ctx.lineTo(obstacle.x + obstacle.width - 18, obstacle.y + 30);
-    ctx.stroke();
-    ctx.fillStyle = "#6c4a2c";
-    ctx.beginPath();
-    ctx.arc(obstacle.x + 20, GROUND_Y, 10, 0, Math.PI * 2);
-    ctx.arc(obstacle.x + obstacle.width - 20, GROUND_Y, 10, 0, Math.PI * 2);
+    ctx.roundRect(obstacle.x + 14, obstacle.y + 34, obstacle.width - 28, 30, 10);
     ctx.fill();
-    ctx.strokeStyle = "#c7a16a";
+    ctx.fillStyle = "#d2ab55";
+    ctx.fillRect(obstacle.x + obstacle.width / 2 - 8, obstacle.y + 40, 16, 20);
+    ctx.fillStyle = "#f0c49a";
     ctx.beginPath();
-    ctx.arc(obstacle.x + 20, GROUND_Y, 5, 0, Math.PI * 2);
-    ctx.arc(obstacle.x + obstacle.width - 20, GROUND_Y, 5, 0, Math.PI * 2);
+    ctx.arc(obstacle.x + obstacle.width / 2, obstacle.y + 22, 14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#8c5a34";
+    ctx.beginPath();
+    ctx.ellipse(obstacle.x + obstacle.width / 2, obstacle.y + 12, 22, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(obstacle.x + obstacle.width / 2 - 14, obstacle.y + 12, 28, 5);
+    ctx.fillStyle = "#2f241b";
+    ctx.beginPath();
+    ctx.arc(obstacle.x + obstacle.width / 2 - 5, obstacle.y + 21, 1.8, 0, Math.PI * 2);
+    ctx.arc(obstacle.x + obstacle.width / 2 + 5, obstacle.y + 21, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#6f4a2f";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + obstacle.width - 12, obstacle.y + 42);
+    ctx.lineTo(obstacle.x + obstacle.width + 6, obstacle.y + obstacle.height - 6);
+    ctx.moveTo(obstacle.x + 14, obstacle.y + 42);
+    ctx.lineTo(obstacle.x - 4, obstacle.y + obstacle.height - 10);
+    ctx.stroke();
+    return;
+  }
+
+  if (obstacle.type === "tractor") {
+    ctx.fillStyle = "#63ad46";
+    ctx.strokeStyle = "#315f23";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(obstacle.x + 12, obstacle.y + 28, obstacle.width - 24, obstacle.height - 28, 12);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#8fd0eb";
+    ctx.beginPath();
+    ctx.roundRect(obstacle.x + 24, obstacle.y + 10, obstacle.width * 0.4, 28, 8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#f2cf4a";
+    ctx.fillRect(obstacle.x + obstacle.width - 28, obstacle.y + 38, 14, 8);
+    ctx.fillStyle = "#315f23";
+    ctx.fillRect(obstacle.x + 58, obstacle.y + 18, 6, 18);
+    ctx.fillStyle = "#2e2e2e";
+    ctx.beginPath();
+    ctx.arc(obstacle.x + 28, GROUND_Y, 20, 0, Math.PI * 2);
+    ctx.arc(obstacle.x + obstacle.width - 24, GROUND_Y, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#c7c7c7";
+    ctx.beginPath();
+    ctx.arc(obstacle.x + 28, GROUND_Y, 8, 0, Math.PI * 2);
+    ctx.arc(obstacle.x + obstacle.width - 24, GROUND_Y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+
+  if (obstacle.type === "sheep") {
+    const bounce = Math.sin(state.frame * 0.22 + obstacle.animSeed) * 2;
+    ctx.fillStyle = "#6d5137";
+    for (const legX of [18, 36, 58, 76]) {
+      ctx.fillRect(obstacle.x + legX, obstacle.y + 42 + Math.max(0, bounce), 7, obstacle.height - 42 - Math.max(0, -bounce));
+    }
+    ctx.fillStyle = "#f7f2ea";
+    ctx.beginPath();
+    ctx.ellipse(obstacle.x + 44, obstacle.y + 30, 28, 22, 0, 0, Math.PI * 2);
+    ctx.ellipse(obstacle.x + 64, obstacle.y + 34, 24, 20, 0, 0, Math.PI * 2);
+    ctx.ellipse(obstacle.x + 28, obstacle.y + 34, 20, 17, 0, 0, Math.PI * 2);
+    ctx.ellipse(obstacle.x + 52, obstacle.y + 22, 18, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#5b4330";
+    ctx.beginPath();
+    ctx.ellipse(obstacle.x + obstacle.width - 18, obstacle.y + 34, 16, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(obstacle.x + obstacle.width - 22, obstacle.y + 32, 2, 0, Math.PI * 2);
+    ctx.arc(obstacle.x + obstacle.width - 14, obstacle.y + 32, 2, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+
+  if (obstacle.type === "scarecrow") {
+    ctx.fillStyle = "#8c6239";
+    ctx.fillRect(obstacle.x + obstacle.width / 2 - 4, obstacle.y + 20, 8, obstacle.height - 20);
+    ctx.fillRect(obstacle.x + 8, obstacle.y + 38, obstacle.width - 16, 6);
+    ctx.fillStyle = "#d0a14e";
+    ctx.beginPath();
+    ctx.arc(obstacle.x + obstacle.width / 2, obstacle.y + 20, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#7b4f27";
+    ctx.beginPath();
+    ctx.ellipse(obstacle.x + obstacle.width / 2, obstacle.y + 10, 20, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(obstacle.x + obstacle.width / 2 - 12, obstacle.y + 10, 24, 4);
+    ctx.fillStyle = "#2f241b";
+    ctx.beginPath();
+    ctx.arc(obstacle.x + obstacle.width / 2 - 4, obstacle.y + 18, 1.6, 0, Math.PI * 2);
+    ctx.arc(obstacle.x + obstacle.width / 2 + 4, obstacle.y + 18, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#bf5a3a";
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + 14, obstacle.y + 46);
+    ctx.lineTo(obstacle.x + obstacle.width / 2, obstacle.y + 66);
+    ctx.lineTo(obstacle.x + obstacle.width - 14, obstacle.y + 46);
+    ctx.lineTo(obstacle.x + obstacle.width / 2, obstacle.y + 36);
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+
+  if (obstacle.type === "rooster") {
+    const bob = Math.sin(state.frame * 0.24 + obstacle.animSeed) * 3;
+    ctx.fillStyle = "#f1ddbf";
+    ctx.beginPath();
+    ctx.ellipse(obstacle.x + 28, obstacle.y + 26, 16, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#d94f43";
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + 16, obstacle.y + 12);
+    ctx.lineTo(obstacle.x + 22, obstacle.y + 2);
+    ctx.lineTo(obstacle.x + 28, obstacle.y + 12);
+    ctx.lineTo(obstacle.x + 34, obstacle.y + 2);
+    ctx.lineTo(obstacle.x + 38, obstacle.y + 14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#f7b733";
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + 42, obstacle.y + 24);
+    ctx.lineTo(obstacle.x + 54, obstacle.y + 28);
+    ctx.lineTo(obstacle.x + 42, obstacle.y + 32);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#2f241b";
+    ctx.beginPath();
+    ctx.arc(obstacle.x + 34, obstacle.y + 22, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#8c5a34";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + 50, obstacle.y + 20);
+    ctx.quadraticCurveTo(obstacle.x + 68, obstacle.y + 8 + bob, obstacle.x + obstacle.width - 8, obstacle.y + 20);
+    ctx.moveTo(obstacle.x + 50, obstacle.y + 26);
+    ctx.quadraticCurveTo(obstacle.x + 70, obstacle.y + 28 + bob, obstacle.x + obstacle.width - 6, obstacle.y + 38);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + 22, obstacle.y + 38);
+    ctx.lineTo(obstacle.x + 18, GROUND_Y);
+    ctx.moveTo(obstacle.x + 30, obstacle.y + 38);
+    ctx.lineTo(obstacle.x + 28, GROUND_Y);
     ctx.stroke();
     return;
   }
@@ -1224,71 +1425,49 @@ function drawObstacle(obstacle) {
     return;
   }
 
-  if (obstacle.type === "mushroom") {
-    ctx.fillStyle = "#f4e5cc";
-    ctx.fillRect(obstacle.x + 20, obstacle.y + 18, 16, obstacle.height - 18);
-    ctx.fillStyle = "#d94242";
-    ctx.beginPath();
-    ctx.ellipse(obstacle.x + obstacle.width / 2, obstacle.y + 16, obstacle.width / 2, 16, 0, Math.PI, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#fff3e1";
-    ctx.beginPath();
-    ctx.arc(obstacle.x + 18, obstacle.y + 14, 4, 0, Math.PI * 2);
-    ctx.arc(obstacle.x + 30, obstacle.y + 10, 4, 0, Math.PI * 2);
-    ctx.arc(obstacle.x + 42, obstacle.y + 14, 4, 0, Math.PI * 2);
-    ctx.fill();
-    return;
-  }
-
   if (obstacle.type === "cow") {
     const stride = Math.sin(state.frame * 0.24 + obstacle.animSeed) * 5;
     const headBob = Math.sin(state.frame * 0.18 + obstacle.animSeed) * 2;
-    ctx.fillStyle = "#b6976c";
-    for (const [legX, offset] of [[18, stride], [36, -stride], [62, -stride], [78, stride]]) {
-      ctx.fillRect(obstacle.x + legX, obstacle.y + 34 + Math.max(0, offset), 8, obstacle.height - 34 - Math.max(0, -offset));
+    ctx.fillStyle = "#5b4330";
+    for (const [legX, offset] of [[18, stride], [38, -stride], [64, -stride], [86, stride]]) {
+      ctx.fillRect(obstacle.x + legX, obstacle.y + 38 + Math.max(0, offset), 8, obstacle.height - 38 - Math.max(0, -offset));
     }
-
     ctx.fillStyle = "#fff8ef";
     ctx.strokeStyle = "#6d5137";
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.roundRect(obstacle.x + 10, obstacle.y + 12, obstacle.width - 24, 34, 14);
+    ctx.roundRect(obstacle.x + 10, obstacle.y + 14, obstacle.width - 26, 36, 16);
     ctx.fill();
     ctx.stroke();
-
     ctx.fillStyle = "#5a3d29";
     ctx.beginPath();
-    ctx.ellipse(obstacle.x + 28, obstacle.y + 26, 10, 7, -0.2, 0, Math.PI * 2);
-    ctx.ellipse(obstacle.x + 52, obstacle.y + 32, 12, 8, 0.25, 0, Math.PI * 2);
-    ctx.ellipse(obstacle.x + 70, obstacle.y + 22, 8, 6, 0.1, 0, Math.PI * 2);
+    ctx.ellipse(obstacle.x + 30, obstacle.y + 28, 11, 8, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(obstacle.x + 58, obstacle.y + 34, 12, 8, 0.25, 0, Math.PI * 2);
+    ctx.ellipse(obstacle.x + 80, obstacle.y + 24, 9, 7, 0.1, 0, Math.PI * 2);
     ctx.fill();
-
     ctx.fillStyle = "#fff8ef";
     ctx.beginPath();
-    ctx.roundRect(obstacle.x + obstacle.width - 34, obstacle.y + 16 + headBob, 24, 22, 10);
+    ctx.roundRect(obstacle.x + obstacle.width - 38, obstacle.y + 18 + headBob, 28, 24, 10);
     ctx.fill();
     ctx.stroke();
-
     ctx.fillStyle = "#f4c8b4";
     ctx.beginPath();
-    ctx.roundRect(obstacle.x + obstacle.width - 30, obstacle.y + 27 + headBob, 16, 10, 5);
+    ctx.roundRect(obstacle.x + obstacle.width - 34, obstacle.y + 29 + headBob, 18, 10, 5);
     ctx.fill();
-
     ctx.fillStyle = "#2f241b";
     ctx.beginPath();
-    ctx.arc(obstacle.x + obstacle.width - 24, obstacle.y + 24 + headBob, 2.2, 0, Math.PI * 2);
-    ctx.arc(obstacle.x + obstacle.width - 17, obstacle.y + 24 + headBob, 2.2, 0, Math.PI * 2);
+    ctx.arc(obstacle.x + obstacle.width - 28, obstacle.y + 26 + headBob, 2.2, 0, Math.PI * 2);
+    ctx.arc(obstacle.x + obstacle.width - 19, obstacle.y + 26 + headBob, 2.2, 0, Math.PI * 2);
     ctx.fill();
-
     ctx.strokeStyle = "#6d5137";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(obstacle.x + obstacle.width - 28, obstacle.y + 17 + headBob);
-    ctx.lineTo(obstacle.x + obstacle.width - 33, obstacle.y + 10 + headBob);
-    ctx.moveTo(obstacle.x + obstacle.width - 14, obstacle.y + 17 + headBob);
-    ctx.lineTo(obstacle.x + obstacle.width - 9, obstacle.y + 10 + headBob);
-    ctx.moveTo(obstacle.x + 8, obstacle.y + 18);
-    ctx.quadraticCurveTo(obstacle.x - 4, obstacle.y + 10, obstacle.x + 4, obstacle.y + 34);
+    ctx.moveTo(obstacle.x + obstacle.width - 30, obstacle.y + 18 + headBob);
+    ctx.quadraticCurveTo(obstacle.x + obstacle.width - 38, obstacle.y + 4 + headBob, obstacle.x + obstacle.width - 48, obstacle.y + 14 + headBob);
+    ctx.moveTo(obstacle.x + obstacle.width - 16, obstacle.y + 18 + headBob);
+    ctx.quadraticCurveTo(obstacle.x + obstacle.width - 6, obstacle.y + 4 + headBob, obstacle.x + obstacle.width + 2, obstacle.y + 16 + headBob);
+    ctx.moveTo(obstacle.x + 10, obstacle.y + 22);
+    ctx.quadraticCurveTo(obstacle.x - 6, obstacle.y + 8, obstacle.x + 2, obstacle.y + 38);
     ctx.stroke();
     return;
   }
@@ -1376,19 +1555,20 @@ function drawPickup(pickup) {
   }
   ctx.lineWidth = 2;
   ctx.beginPath();
-  if (isMeat) {
-    ctx.ellipse(pickup.x, pickup.y, pickup.size * 1.05, pickup.size * 0.72, 0.35, 0, Math.PI * 2);
-  } else {
+  if (!isMeat) {
     ctx.arc(pickup.x, pickup.y, pickup.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    ctx.save();
+    ctx.font = `${pickup.size * 1.7}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🍖", pickup.x, pickup.y + 1);
+    ctx.restore();
   }
-  ctx.fill();
-  ctx.stroke();
 
   if (isMeat) {
-    ctx.fillStyle = "#f2eadf";
-    ctx.beginPath();
-    ctx.arc(pickup.x + pickup.size * 0.58, pickup.y - pickup.size * 0.08, pickup.size * 0.28, 0, Math.PI * 2);
-    ctx.fill();
   } else if (isRotten) {
     ctx.fillStyle = "#6d4f1d";
     ctx.beginPath();
@@ -1574,6 +1754,7 @@ async function submitCurrentScore() {
   state.scoreSubmitted = true;
   state.awaitingScoreEntry = false;
   state.status = `Saved score for ${enteredName}. Press Restart or Space to play again.`;
+  playSaveSound();
   await renderLeaderboard();
 }
 
@@ -1628,6 +1809,7 @@ canvas.addEventListener("pointerdown", () => {
 
 restartButton.addEventListener("click", () => {
   unlockAudio();
+  playRestartSound();
   resetGame();
 });
 

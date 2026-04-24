@@ -316,9 +316,9 @@ button {
 
   .game-panel {
     padding: 0;
+    background: transparent;
+    border: 0;
     border-radius: 0;
-    border-left: 0;
-    border-right: 0;
     box-shadow: none;
   }
 

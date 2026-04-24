@@ -297,16 +297,46 @@ button {
   }
 
   .app-shell {
-    padding: 4px 0;
+    width: 100vw;
+    padding: 0;
   }
 
   h1 {
     font-size: 1.45rem;
   }
 
+  .topbar {
+    padding: 8px 10px 0;
+    margin-bottom: 10px;
+  }
+
+  .layout {
+    gap: 8px;
+  }
+
+  .game-panel {
+    padding: 0;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    box-shadow: none;
+  }
+
+  .game-stage {
+    margin: 0;
+  }
+
+  .hud-row,
+  .controls-panel,
+  .mobile-perk-note {
+    margin-left: 10px;
+    margin-right: 10px;
+  }
+
   .hud-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+    margin-bottom: 8px;
   }
 
   .hud-card {
@@ -318,12 +348,14 @@ button {
   }
 
   canvas {
-    border-radius: 14px;
+    border-radius: 0;
   }
 
   .corner-perk-dash {
     position: static;
-    width: 100%;
+    width: calc(100% - 20px);
+    margin-left: 10px;
+    margin-right: 10px;
     margin-top: 10px;
     padding: 10px;
     border-radius: 14px;

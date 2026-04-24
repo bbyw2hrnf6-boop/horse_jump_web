@@ -60,8 +60,9 @@ const leaderboard = new LeaderboardService();
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
 const GROUND_Y = 392;
-const OBSTACLE_SCALE = 1.14;
+const OBSTACLE_SCALE = 1.24;
 const PICKUP_SCALE = 1.16;
+const FRIDAY_EVENT_ACTIVE = new Date().getDay() === 5;
 const PERK_COSTS = { fly: 35, magnet: 28, blaster: 32 };
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 
@@ -103,14 +104,17 @@ const state = {
   invisibleUntil: 0,
   powerModeUntil: 0,
   rottenBoostUntil: 0,
+  bullUntil: 0,
   nextShotFrame: 0,
   obstacles: [],
   coinsInWorld: [],
   pickups: [],
+  celebrationBursts: [],
   projectiles: [],
   spawnTimer: 85,
   coinTimer: 140,
   pickupTimer: 950,
+  meatTimer: 760,
   clouds: [
     { x: 80, y: 72, size: 1.0, speed: 0.35 },
     { x: 320, y: 52, size: 1.15, speed: 0.25 },
@@ -236,6 +240,12 @@ function playRottenAppleSound() {
   playTone({ frequency: 440, duration: 0.14, type: "sawtooth", volume: 0.05, when: 0.14, slideTo: 659.25 });
 }
 
+function playBullSound() {
+  playTone({ frequency: 146.83, duration: 0.16, type: "sawtooth", volume: 0.06, slideTo: 196 });
+  playTone({ frequency: 220, duration: 0.12, type: "square", volume: 0.05, when: 0.07, slideTo: 329.63 });
+  playTone({ frequency: 329.63, duration: 0.14, type: "sawtooth", volume: 0.05, when: 0.16, slideTo: 493.88 });
+}
+
 function getAreaMusicPattern(area) {
   const patterns = [
     { lead: [261.63, 329.63, 392, 440, 392, 329.63, 293.66, 349.23], bass: [130.81, 98, 110, 98] },
@@ -251,11 +261,18 @@ function getAreaMusicPattern(area) {
     lead: [392, 493.88, 587.33, 783.99, 659.25, 587.33, 523.25, 659.25],
     bass: [98, 123.47, 146.83, 164.81],
   };
+  const bullPattern = {
+    lead: [293.66, 392, 493.88, 587.33, 783.99, 659.25, 587.33, 493.88],
+    bass: [73.42, 98, 123.47, 146.83],
+  };
   if (area === "power") {
     return powerPattern;
   }
   if (area === "rotten") {
     return rottenPattern;
+  }
+  if (area === "bull") {
+    return bullPattern;
   }
   return patterns[area % patterns.length];
 }
@@ -341,7 +358,9 @@ function resetGame() {
   state.scoreSubmitted = false;
   state.gameOverHandled = false;
   state.awaitingScoreEntry = false;
-  state.status = "Press Space or tap to jump.";
+  state.status = FRIDAY_EVENT_ACTIVE
+    ? "Friday special active: find meat to become a bull."
+    : "Press Space or tap to jump.";
   state.worldSpeed = 7;
   state.flyUntil = 0;
   state.magnetUntil = 0;
@@ -349,14 +368,17 @@ function resetGame() {
   state.invisibleUntil = 0;
   state.powerModeUntil = 0;
   state.rottenBoostUntil = 0;
+  state.bullUntil = 0;
   state.nextShotFrame = 0;
   state.obstacles = [];
   state.coinsInWorld = [];
   state.pickups = [];
+  state.celebrationBursts = [];
   state.projectiles = [];
   state.spawnTimer = 85;
   state.coinTimer = 140;
   state.pickupTimer = 950;
+  state.meatTimer = 760;
   Object.assign(state.horse, {
     y: GROUND_Y,
     vy: 0,
@@ -378,6 +400,7 @@ function getAreaTheme() {
 }
 
 function getActivePerk() {
+  if (state.bullUntil > state.frame) return `Friday Bull ${Math.ceil((state.bullUntil - state.frame) / 60)}s`;
   if (state.rottenBoostUntil > state.frame) return `Turbo Apple ${Math.ceil((state.rottenBoostUntil - state.frame) / 60)}s`;
   if (state.flyUntil > state.frame) return `Fly ${Math.ceil((state.flyUntil - state.frame) / 60)}s`;
   if (state.magnetUntil > state.frame) return `Magnet ${Math.ceil((state.magnetUntil - state.frame) / 60)}s`;
@@ -387,6 +410,7 @@ function getActivePerk() {
 
 function getPerkCountdownState() {
   const activePerks = [
+    { name: "Friday Bull", until: state.bullUntil },
     { name: "Turbo Apple", until: state.rottenBoostUntil },
     { name: "Fly", until: state.flyUntil },
     { name: "Magnet", until: state.magnetUntil },
@@ -509,6 +533,17 @@ function spawnApple() {
   });
 }
 
+function spawnMeat() {
+  const yOptions = [GROUND_Y - 82, GROUND_Y - 138, GROUND_Y - 190];
+  state.pickups.push({
+    x: WIDTH + 150 + Math.random() * 150,
+    y: yOptions[Math.floor(Math.random() * yOptions.length)],
+    size: Math.round(15 * PICKUP_SCALE),
+    pulse: Math.random() * Math.PI * 2,
+    kind: "meat",
+  });
+}
+
 function activateApplePower() {
   state.invisibleUntil = state.frame + 10 * 60;
   state.powerModeUntil = state.frame + 10 * 60;
@@ -522,6 +557,30 @@ function activateRottenApplePower() {
   state.status = "Fauler Apfel: Turbo-Speed fuer 5 Sekunden.";
   playRottenAppleSound();
   startAreaMusic("rotten", true);
+}
+
+function spawnCelebrationBurst(x, y, palette = ["#ffd54f", "#ff6b6b", "#4fc3f7", "#8bc34a"]) {
+  for (let index = 0; index < 14; index += 1) {
+    const angle = (Math.PI * 2 * index) / 14 + Math.random() * 0.3;
+    const speed = 1.8 + Math.random() * 2.4;
+    state.celebrationBursts.push({
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1.1,
+      life: 28 + Math.random() * 14,
+      color: palette[index % palette.length],
+      size: 4 + Math.random() * 3,
+    });
+  }
+}
+
+function activateBullPower() {
+  state.bullUntil = state.frame + 10 * 60;
+  state.status = "Friday Special: You are a bull for 10 seconds. Smash everything.";
+  playBullSound();
+  spawnCelebrationBurst(state.horse.x + 80, state.horse.y - 80, ["#ef5350", "#ffca28", "#ffffff", "#5c6bc0"]);
+  startAreaMusic("bull", true);
 }
 
 function updateHorse() {
@@ -548,10 +607,17 @@ function updateWorld() {
   state.frame += 1;
   const previousArea = state.area;
   state.area = Math.floor(state.score / 2500) % 4;
+  if (FRIDAY_EVENT_ACTIVE && state.area !== previousArea && state.frame > 1) {
+    spawnCelebrationBurst(WIDTH * 0.5, 84, ["#ffd54f", "#f06292", "#4fc3f7", "#ffffff"]);
+  }
   const baseWorldSpeed = 7 + Math.min(8, Math.floor(state.score / 2500)) * 0.5;
-  state.worldSpeed = baseWorldSpeed + (state.rottenBoostUntil > state.frame ? 3.2 : 0);
+  state.worldSpeed = baseWorldSpeed
+    + (state.rottenBoostUntil > state.frame ? 3.2 : 0)
+    + (state.bullUntil > state.frame ? 4.4 : 0);
   state.score += 1;
-  const desiredMusic = state.rottenBoostUntil > state.frame
+  const desiredMusic = state.bullUntil > state.frame
+    ? "bull"
+    : state.rottenBoostUntil > state.frame
     ? "rotten"
     : (state.powerModeUntil > state.frame ? "power" : state.area);
   if (desiredMusic !== audioState.currentArea || state.area !== previousArea) {
@@ -574,6 +640,14 @@ function updateWorld() {
   if (state.pickupTimer <= 0) {
     spawnApple();
     state.pickupTimer = 900 + Math.random() * 600;
+  }
+
+  if (FRIDAY_EVENT_ACTIVE) {
+    state.meatTimer -= 1;
+    if (state.meatTimer <= 0) {
+      spawnMeat();
+      state.meatTimer = 1150 + Math.random() * 650;
+    }
   }
 
   for (const cloud of state.clouds) {
@@ -631,6 +705,14 @@ function updateWorld() {
   }
   state.pickups = state.pickups.filter((pickup) => pickup.x > -40);
 
+  for (const burst of state.celebrationBursts) {
+    burst.x += burst.vx;
+    burst.y += burst.vy;
+    burst.vy += 0.08;
+    burst.life -= 1;
+  }
+  state.celebrationBursts = state.celebrationBursts.filter((burst) => burst.life > 0);
+
   if (state.blasterUntil > state.frame && state.frame >= state.nextShotFrame) {
     const target = state.obstacles[0];
     state.projectiles.push({
@@ -686,12 +768,18 @@ function checkCollisions() {
     );
     if (overlap) {
       state.pickups.splice(state.pickups.indexOf(pickup), 1);
-      if (pickup.kind === "rotten") {
+      if (pickup.kind === "meat") {
+        activateBullPower();
+        state.score += 150;
+      } else if (pickup.kind === "rotten") {
         activateRottenApplePower();
+        spawnCelebrationBurst(pickup.x, pickup.y, ["#8bc34a", "#c5e1a5", "#aed581"]);
+        state.score += 120;
       } else {
         activateApplePower();
+        spawnCelebrationBurst(pickup.x, pickup.y, ["#ff7043", "#ffcc80", "#ef5350"]);
+        state.score += 120;
       }
-      state.score += 120;
     }
   }
 
@@ -720,6 +808,12 @@ function checkCollisions() {
       horseBox.bottom > obstacle.y
     );
     if (overlap) {
+      if (state.bullUntil > state.frame) {
+        spawnCelebrationBurst(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2, ["#ff7043", "#ffeb3b", "#ffffff"]);
+        state.obstacles.splice(state.obstacles.indexOf(obstacle), 1);
+        state.score += 42;
+        continue;
+      }
       if (state.invisibleUntil > state.frame) {
         continue;
       }
@@ -779,15 +873,116 @@ function drawHorse() {
   const horse = state.horse;
   const x = horse.x;
   const groundY = horse.y;
+  const bullMode = state.bullUntil > state.frame;
   const invisibleFlash = state.invisibleUntil > state.frame && Math.floor(state.frame / 6) % 2 === 0;
   const running = !state.gameOver && horse.onGround;
-  const stridePhase = running ? state.frame * 0.32 : Math.PI / 2;
-  const strideAmount = running ? 10 : 3;
-  const bodyFill = invisibleFlash ? "#c8dced" : "#9b6338";
-  const bodyStroke = invisibleFlash ? "#8ba1b3" : "#704522";
+  const stridePhase = running ? state.frame * (bullMode ? 0.48 : 0.32) : Math.PI / 2;
+  const strideAmount = running ? (bullMode ? 15 : 10) : 3;
+  const bodyFill = bullMode ? "#63342d" : (invisibleFlash ? "#c8dced" : "#9b6338");
+  const bodyStroke = bullMode ? "#2e1711" : (invisibleFlash ? "#8ba1b3" : "#704522");
   ctx.fillStyle = bodyFill;
   ctx.strokeStyle = bodyStroke;
   ctx.lineWidth = 3;
+
+  if (FRIDAY_EVENT_ACTIVE) {
+    for (let index = 0; index < 4; index += 1) {
+      ctx.fillStyle = `rgba(255, ${190 - index * 22}, 90, ${0.18 - index * 0.03})`;
+      ctx.beginPath();
+      ctx.ellipse(x + 24 - index * 18, groundY - 42, 24 + index * 4, 12 + index * 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  if (bullMode) {
+    ctx.fillStyle = "#5b2e26";
+    ctx.strokeStyle = "#2b150f";
+    ctx.lineWidth = 4;
+
+    ctx.beginPath();
+    ctx.ellipse(x + 78, groundY - 52, 62, 34, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.ellipse(x + 132, groundY - 62, 30, 24, -0.08, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#774236";
+    ctx.beginPath();
+    ctx.ellipse(x + 38, groundY - 58, 18, 20, 0.18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#e9dcc8";
+    ctx.beginPath();
+    ctx.moveTo(x + 118, groundY - 82);
+    ctx.quadraticCurveTo(x + 110, groundY - 100, x + 94, groundY - 92);
+    ctx.lineTo(x + 106, groundY - 76);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x + 148, groundY - 82);
+    ctx.quadraticCurveTo(x + 166, groundY - 102, x + 182, groundY - 90);
+    ctx.lineTo(x + 160, groundY - 76);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#c58a74";
+    ctx.beginPath();
+    ctx.roundRect(x + 142, groundY - 58, 28, 18, 9);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#2b150f";
+    ctx.beginPath();
+    ctx.arc(x + 148, groundY - 50, 2.5, 0, Math.PI * 2);
+    ctx.arc(x + 160, groundY - 50, 2.5, 0, Math.PI * 2);
+    ctx.arc(x + 146, groundY - 63, 2.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#2b150f";
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(x + 30, groundY - 60);
+    ctx.quadraticCurveTo(x + 6, groundY - 78, x + 16, groundY - 30);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#2b150f";
+    ctx.lineWidth = 8;
+    for (const [index, legX] of [42, 68, 98, 122].entries()) {
+      const swing = Math.sin(stridePhase + (index % 2 === 0 ? 0 : Math.PI)) * strideAmount;
+      const kneeX = x + legX + swing * 0.34;
+      const kneeY = groundY - 18 - Math.abs(swing) * 0.16 - (running ? 0 : 5);
+      const hoofX = x + legX + swing * 0.66;
+      ctx.beginPath();
+      ctx.moveTo(x + legX, groundY - 28);
+      ctx.lineTo(kneeX, kneeY);
+      ctx.lineTo(hoofX, groundY);
+      ctx.stroke();
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(hoofX - 5, groundY);
+      ctx.lineTo(hoofX + 3, groundY);
+      ctx.stroke();
+      ctx.lineWidth = 8;
+    }
+
+    ctx.strokeStyle = "#2b150f";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(x + 22, groundY - 70);
+    ctx.quadraticCurveTo(x - 2, groundY - 96, x + 4, groundY - 118);
+    ctx.stroke();
+    ctx.fillStyle = "#f4d35e";
+    ctx.beginPath();
+    ctx.ellipse(x + 2, groundY - 120, 7, 5, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
 
   ctx.beginPath();
   ctx.ellipse(x + 72, groundY - 52, 52, 28, 0, 0, Math.PI * 2);
@@ -830,6 +1025,20 @@ function drawHorse() {
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
+
+  if (FRIDAY_EVENT_ACTIVE) {
+    ctx.fillStyle = "#f06292";
+    ctx.beginPath();
+    ctx.moveTo(x + 144, groundY - 132);
+    ctx.lineTo(x + 132, groundY - 154);
+    ctx.lineTo(x + 156, groundY - 148);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#ffd54f";
+    ctx.beginPath();
+    ctx.arc(x + 144, groundY - 132, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   ctx.strokeStyle = bodyStroke;
   ctx.lineWidth = 6;
@@ -1149,21 +1358,38 @@ function drawCoin(coin) {
 
 function drawPickup(pickup) {
   const glow = 1 + Math.sin(pickup.pulse) * 0.12;
+  const isMeat = pickup.kind === "meat";
   const isRotten = pickup.kind === "rotten";
-  ctx.fillStyle = isRotten ? "rgba(176, 210, 126, 0.35)" : "rgba(255, 214, 190, 0.35)";
+  ctx.fillStyle = isMeat
+    ? "rgba(255, 170, 120, 0.35)"
+    : (isRotten ? "rgba(176, 210, 126, 0.35)" : "rgba(255, 214, 190, 0.35)");
   ctx.beginPath();
   ctx.arc(pickup.x, pickup.y, pickup.size * 1.35 * glow, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = isRotten ? "#8fb14a" : "#df3939";
-  ctx.strokeStyle = isRotten ? "#536d23" : "#9b1f1f";
+  if (isMeat) {
+    ctx.fillStyle = "#b14b39";
+    ctx.strokeStyle = "#6f2418";
+  } else {
+    ctx.fillStyle = isRotten ? "#8fb14a" : "#df3939";
+    ctx.strokeStyle = isRotten ? "#536d23" : "#9b1f1f";
+  }
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(pickup.x, pickup.y, pickup.size, 0, Math.PI * 2);
+  if (isMeat) {
+    ctx.ellipse(pickup.x, pickup.y, pickup.size * 1.05, pickup.size * 0.72, 0.35, 0, Math.PI * 2);
+  } else {
+    ctx.arc(pickup.x, pickup.y, pickup.size, 0, Math.PI * 2);
+  }
   ctx.fill();
   ctx.stroke();
 
-  if (isRotten) {
+  if (isMeat) {
+    ctx.fillStyle = "#f2eadf";
+    ctx.beginPath();
+    ctx.arc(pickup.x + pickup.size * 0.58, pickup.y - pickup.size * 0.08, pickup.size * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (isRotten) {
     ctx.fillStyle = "#6d4f1d";
     ctx.beginPath();
     ctx.arc(pickup.x - pickup.size * 0.25, pickup.y - pickup.size * 0.1, pickup.size * 0.2, 0, Math.PI * 2);
@@ -1171,14 +1397,26 @@ function drawPickup(pickup) {
     ctx.fill();
   }
 
-  ctx.fillStyle = "#5f8d34";
-  ctx.fillRect(pickup.x - 2, pickup.y - pickup.size - 6, 4, 8);
-  ctx.beginPath();
-  ctx.moveTo(pickup.x, pickup.y - pickup.size - 4);
-  ctx.lineTo(pickup.x + 8, pickup.y - pickup.size - 12);
-  ctx.lineTo(pickup.x + 4, pickup.y - pickup.size - 3);
-  ctx.closePath();
-  ctx.fill();
+  if (!isMeat) {
+    ctx.fillStyle = "#5f8d34";
+    ctx.fillRect(pickup.x - 2, pickup.y - pickup.size - 6, 4, 8);
+    ctx.beginPath();
+    ctx.moveTo(pickup.x, pickup.y - pickup.size - 4);
+    ctx.lineTo(pickup.x + 8, pickup.y - pickup.size - 12);
+    ctx.lineTo(pickup.x + 4, pickup.y - pickup.size - 3);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+function drawCelebrationBurst(burst) {
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, burst.life / 36);
+  ctx.fillStyle = burst.color;
+  ctx.translate(burst.x, burst.y);
+  ctx.rotate((burst.vx + burst.vy) * 0.2);
+  ctx.fillRect(-burst.size / 2, -burst.size / 2, burst.size, burst.size * 1.6);
+  ctx.restore();
 }
 
 function drawProjectile(projectile) {
@@ -1229,7 +1467,24 @@ function drawScene() {
   for (const pickup of state.pickups) drawPickup(pickup);
   for (const coin of state.coinsInWorld) drawCoin(coin);
   for (const projectile of state.projectiles) drawProjectile(projectile);
+  for (const burst of state.celebrationBursts) drawCelebrationBurst(burst);
   drawHorse();
+
+  if (FRIDAY_EVENT_ACTIVE) {
+    ctx.save();
+    ctx.fillStyle = "rgba(255, 250, 231, 0.92)";
+    ctx.strokeStyle = "#d97706";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(18, 18, 204, 44, 16);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#7c2d12";
+    ctx.font = "bold 18px Trebuchet MS";
+    ctx.textAlign = "left";
+    ctx.fillText("Friday Celebration", 34, 46);
+    ctx.restore();
+  }
 
   if (perkCountdown) {
     ctx.save();

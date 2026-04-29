@@ -686,8 +686,7 @@ function activateApplePower() {
 
 function activateRottenApplePower() {
   state.rottenBoostUntil = state.frame + 5 * 60;
-  state.invisibilityGraceUntil = Math.max(state.invisibilityGraceUntil, state.frame + 6 * 60);
-  state.status = "Fauler Apfel: Turbo-Speed fuer 5 Sekunden.";
+  state.status = "Fauler Apfel: Turbo-Speed fuer 5 Sekunden, aber du bleibst verwundbar.";
   playRottenAppleSound();
   startAreaMusic("rotten", true);
 }

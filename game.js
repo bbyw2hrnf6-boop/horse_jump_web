@@ -129,6 +129,8 @@ const HEIGHT = canvas.height;
 const GROUND_Y = 392;
 const OBSTACLE_SCALE = 1.24;
 const PICKUP_SCALE = 1.16;
+const SIMULATION_STEP_MS = 1000 / 60;
+const MAX_SIMULATION_STEPS = 4;
 const FRIDAY_EVENT_ACTIVE = new Date().getDay() === 5;
 const PERK_COSTS = { fly: 35, magnet: 8, blaster: 32 };
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -203,6 +205,31 @@ const state = {
     { x: 910, y: GROUND_Y - 108, size: 0.85, speed: 0.62, phase: 3.1 },
   ],
 };
+
+const hudCache = {
+  score: "",
+  coins: "",
+  area: "",
+  perk: "",
+  status: "",
+  submitText: "",
+  promptText: "",
+  inputDisabled: null,
+  submitDisabled: null,
+  restartDisabled: null,
+  mobileGameOver: null,
+  perkButtons: new Map(),
+};
+
+let lastTickTime = null;
+let accumulatedTime = 0;
+let isMobileLayout = window.matchMedia("(max-width: 720px)").matches;
+
+window.addEventListener("resize", () => {
+  isMobileLayout = window.matchMedia("(max-width: 720px)").matches;
+  hudCache.submitText = "";
+  hudCache.mobileGameOver = null;
+});
 
 function ensureAudioReady() {
   if (!audioState.enabled || audioState.context) {
@@ -447,6 +474,8 @@ function startAreaMusic(area, forceRestart = false) {
 }
 
 function resetGame() {
+  accumulatedTime = 0;
+  lastTickTime = null;
   state.frame = 0;
   state.score = 0;
   state.coins = 0;
@@ -1793,20 +1822,18 @@ function drawScene() {
 }
 
 function syncHud() {
-  const isMobileLayout = window.matchMedia("(max-width: 720px)").matches;
-  scoreValue.textContent = `${state.score}`;
-  coinValue.textContent = `${state.coins}`;
-  areaValue.textContent = `${state.area + 1}`;
-  perkValue.textContent = getActivePerk();
-  statusText.textContent = state.status;
-  scoreSubmitButton.textContent = state.awaitingScoreEntry
+  const scoreText = `${state.score}`;
+  const coinText = `${state.coins}`;
+  const areaText = `${state.area + 1}`;
+  const perkText = getActivePerk();
+  const submitText = state.awaitingScoreEntry
     ? (state.scoreSubmissionInProgress
       ? "Saving..."
       : (state.scoreSaveDecisionPending
       ? "Checking Score..."
       : (state.forcedScoreSave ? "Save Top Score" : (isMobileLayout ? "Confirm Result / Restart" : "Confirm Result"))))
     : "Confirm";
-  scorePromptText.textContent = state.awaitingScoreEntry
+  const promptText = state.awaitingScoreEntry
     ? (state.scoreSubmissionInProgress
       ? "Saving your score..."
       : (state.scoreSaveDecisionPending
@@ -1815,17 +1842,71 @@ function syncHud() {
         ? "Top 3 score: enter a player name and save it to continue."
         : "Game paused. Enter a name and confirm to save, or press Space / confirm empty to restart.")))
     : "Enter a name after game over to save your score.";
-  playerNameInput.disabled = !state.awaitingScoreEntry;
-  scoreSubmitButton.disabled = !state.awaitingScoreEntry || state.scoreSaveDecisionPending || state.scoreSubmissionInProgress;
-  restartButton.disabled = state.awaitingScoreEntry;
-  leaderboardPanel.parentElement.classList.toggle("mobile-game-over", isMobileLayout && state.awaitingScoreEntry);
+  const inputDisabled = !state.awaitingScoreEntry;
+  const submitDisabled = !state.awaitingScoreEntry || state.scoreSaveDecisionPending || state.scoreSubmissionInProgress;
+  const restartDisabled = state.awaitingScoreEntry;
+  const mobileGameOver = isMobileLayout && state.awaitingScoreEntry;
+
+  if (hudCache.score !== scoreText) {
+    scoreValue.textContent = scoreText;
+    hudCache.score = scoreText;
+  }
+  if (hudCache.coins !== coinText) {
+    coinValue.textContent = coinText;
+    hudCache.coins = coinText;
+  }
+  if (hudCache.area !== areaText) {
+    areaValue.textContent = areaText;
+    hudCache.area = areaText;
+  }
+  if (hudCache.perk !== perkText) {
+    perkValue.textContent = perkText;
+    hudCache.perk = perkText;
+  }
+  if (hudCache.status !== state.status) {
+    statusText.textContent = state.status;
+    hudCache.status = state.status;
+  }
+  if (hudCache.submitText !== submitText) {
+    scoreSubmitButton.textContent = submitText;
+    hudCache.submitText = submitText;
+  }
+  if (hudCache.promptText !== promptText) {
+    scorePromptText.textContent = promptText;
+    hudCache.promptText = promptText;
+  }
+  if (hudCache.inputDisabled !== inputDisabled) {
+    playerNameInput.disabled = inputDisabled;
+    hudCache.inputDisabled = inputDisabled;
+  }
+  if (hudCache.submitDisabled !== submitDisabled) {
+    scoreSubmitButton.disabled = submitDisabled;
+    hudCache.submitDisabled = submitDisabled;
+  }
+  if (hudCache.restartDisabled !== restartDisabled) {
+    restartButton.disabled = restartDisabled;
+    hudCache.restartDisabled = restartDisabled;
+  }
+  if (hudCache.mobileGameOver !== mobileGameOver) {
+    leaderboardPanel.parentElement.classList.toggle("mobile-game-over", mobileGameOver);
+    hudCache.mobileGameOver = mobileGameOver;
+  }
 
   for (const button of perkButtons) {
     const perk = button.dataset.perk;
     const affordable = state.coins >= PERK_COSTS[perk];
-    button.style.outline = affordable ? "3px solid #d5a62c" : "none";
-    button.style.opacity = affordable ? "1" : "0.82";
-    button.disabled = state.awaitingScoreEntry;
+    const disabled = state.awaitingScoreEntry;
+    const cached = hudCache.perkButtons.get(button) || {};
+    if (cached.affordable !== affordable) {
+      button.style.outline = affordable ? "3px solid #d5a62c" : "none";
+      button.style.opacity = affordable ? "1" : "0.82";
+      cached.affordable = affordable;
+    }
+    if (cached.disabled !== disabled) {
+      button.disabled = disabled;
+      cached.disabled = disabled;
+    }
+    hudCache.perkButtons.set(button, cached);
   }
 }
 
@@ -1884,12 +1965,32 @@ async function submitCurrentScore() {
   }
 }
 
-function tick() {
-  if (!state.gameOver) {
-    updateHorse();
-    updateWorld();
-    checkCollisions();
+function tick(timestamp = performance.now()) {
+  if (lastTickTime === null) {
+    lastTickTime = timestamp;
   }
+
+  if (!state.gameOver) {
+    const elapsed = Math.min(250, timestamp - lastTickTime);
+    accumulatedTime += elapsed;
+    let simulationSteps = 0;
+
+    while (accumulatedTime >= SIMULATION_STEP_MS && simulationSteps < MAX_SIMULATION_STEPS && !state.gameOver) {
+      updateHorse();
+      updateWorld();
+      checkCollisions();
+      accumulatedTime -= SIMULATION_STEP_MS;
+      simulationSteps += 1;
+    }
+
+    if (simulationSteps === MAX_SIMULATION_STEPS && accumulatedTime >= SIMULATION_STEP_MS) {
+      accumulatedTime = SIMULATION_STEP_MS;
+    }
+  } else {
+    accumulatedTime = 0;
+  }
+
+  lastTickTime = timestamp;
   drawScene();
   syncHud();
   if (state.gameOver && !state.gameOverHandled) {

@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Horse Jump Web is a browser endless runner with perks, coins, carrots, and online leaderboard support.">
+  <meta name="theme-color" content="#dbefff">
   <title>Horse Jump Web</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
@@ -11,7 +13,7 @@
     <header class="topbar">
       <div>
         <p class="eyebrow">Horse Jump</p>
-        <h1>Web Build</h1>
+        <h1>Horse Jump Web</h1>
       </div>
       <div class="topbar-actions">
         <button id="restartButton" type="button">Restart</button>
@@ -40,7 +42,9 @@
         </div>
 
         <div class="game-stage">
-          <canvas id="gameCanvas" width="960" height="540"></canvas>
+          <canvas id="gameCanvas" width="960" height="540" aria-label="Horse Jump endless runner game" role="img">
+            Horse Jump Web needs a browser with canvas support.
+          </canvas>
 
           <section class="corner-perk-dash panel" id="perksPanel">
             <h2>Perks</h2>
@@ -57,7 +61,7 @@
               </button>
               <button class="perk-button" data-perk="blaster" type="button">
                 <span>3</span>
-                <strong>Blaster</strong>
+                <strong>Carrot Blaster</strong>
                 <small>32 coins</small>
               </button>
             </div>
@@ -66,7 +70,7 @@
 
         <div class="controls-panel">
           <p><strong>Jump:</strong> Space / Tap</p>
-          <p><strong>Perks:</strong> 1 Fly, 2 Magnet, 3 Blaster</p>
+          <p><strong>Perks:</strong> 1 Fly, 2 Magnet, 3 Carrot Blaster</p>
           <p><strong>Apples:</strong> Red apple = invincible boost, rotten apple = speed only and you can still die.</p>
         </div>
         <p class="mobile-perk-note">Collect coins for perks, grab red apples for safety, and avoid trusting rotten apples too much.</p>
@@ -75,18 +79,18 @@
       <aside class="side-panel">
         <section class="panel" id="statusPanel">
           <h2>Status</h2>
-          <p id="statusText">Press Space or tap to jump.</p>
+          <p id="statusText" aria-live="polite">Press Space or tap to jump.</p>
           <p class="panel-note">Red apple protects you for a short time. Rotten apple only boosts speed and leaves you vulnerable.</p>
         </section>
 
         <section class="panel" id="leaderboardPanel">
           <h2>Leaderboard</h2>
           <form id="scoreForm" class="score-form">
-            <input id="playerName" name="playerName" maxlength="14" placeholder="Your name">
-            <button id="scoreSubmitButton" type="submit">Confirm</button>
+            <input id="playerName" name="playerName" maxlength="14" placeholder="Your name" autocomplete="nickname" disabled>
+            <button id="scoreSubmitButton" type="submit" disabled>Confirm</button>
           </form>
           <p class="panel-note" id="scorePromptText">Enter a name after game over to save your score.</p>
-          <p class="panel-note">Online scoreboard available soon as well, stay tuned.</p>
+          <p class="panel-note">Shared online scores load when Firebase is available, with local scores as a fallback.</p>
           <ol id="leaderboardList" class="leaderboard-list"></ol>
           <p class="panel-note" id="leaderboardMode">Mode: local only for now</p>
         </section>

@@ -133,6 +133,7 @@ const SIMULATION_STEP_MS = 1000 / 60;
 const MAX_SIMULATION_STEPS = 4;
 const FRIDAY_EVENT_ACTIVE = new Date().getDay() === 5;
 const PERK_COSTS = { fly: 35, magnet: 8, blaster: 32 };
+const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 
 const audioState = {
@@ -535,7 +536,7 @@ function getActivePerk() {
   if (state.powerModeUntil > state.frame) return `Apple Power ${Math.ceil((state.powerModeUntil - state.frame) / 60)}s`;
   if (state.flyUntil > state.frame) return `Fly ${Math.ceil((state.flyUntil - state.frame) / 60)}s`;
   if (state.magnetUntil > state.frame) return `Magnet ${Math.ceil((state.magnetUntil - state.frame) / 60)}s`;
-  if (state.blasterUntil > state.frame) return `Blaster ${Math.ceil((state.blasterUntil - state.frame) / 60)}s`;
+  if (state.blasterUntil > state.frame) return `${PERK_LABELS.blaster} ${Math.ceil((state.blasterUntil - state.frame) / 60)}s`;
   return "None";
 }
 
@@ -558,7 +559,7 @@ function getPerkCountdownState() {
     { name: "Turbo Apple", until: state.rottenBoostUntil },
     { name: "Fly", until: state.flyUntil },
     { name: "Magnet", until: state.magnetUntil },
-    { name: "Blaster", until: state.blasterUntil },
+    { name: PERK_LABELS.blaster, until: state.blasterUntil },
     { name: "Apple Power", until: state.powerModeUntil },
   ];
 
@@ -582,7 +583,7 @@ function tryActivatePerk(perkName) {
     return;
   }
   if (state.coins < PERK_COSTS[perkName]) {
-    state.status = `Need ${PERK_COSTS[perkName]} coins for ${perkName}.`;
+    state.status = `Need ${PERK_COSTS[perkName]} coins for ${PERK_LABELS[perkName]}.`;
     playErrorSound();
     return;
   }
@@ -595,7 +596,7 @@ function tryActivatePerk(perkName) {
     state.blasterUntil = state.frame + duration;
     state.nextShotFrame = state.frame;
   }
-  state.status = `${perkName} perk active for 10 seconds.`;
+  state.status = `${PERK_LABELS[perkName]} perk active for 10 seconds.`;
   playPerkSound();
 }
 
@@ -1719,10 +1720,42 @@ function drawCelebrationBurst(burst) {
 }
 
 function drawProjectile(projectile) {
-  ctx.fillStyle = "#7ec8ff";
+  const angle = Math.atan2(projectile.vy, projectile.vx);
+  const length = projectile.size * 4.2;
+  const radius = projectile.size * 1.1;
+
+  ctx.save();
+  ctx.translate(projectile.x, projectile.y);
+  ctx.rotate(angle);
+
+  ctx.fillStyle = "#f28c28";
   ctx.beginPath();
-  ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2);
+  ctx.moveTo(length * 0.58, 0);
+  ctx.quadraticCurveTo(-length * 0.08, -radius, -length * 0.62, -radius * 0.46);
+  ctx.quadraticCurveTo(-length * 0.78, 0, -length * 0.62, radius * 0.46);
+  ctx.quadraticCurveTo(-length * 0.08, radius, length * 0.58, 0);
   ctx.fill();
+
+  ctx.strokeStyle = "#b75719";
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(-length * 0.36, -radius * 0.48);
+  ctx.lineTo(-length * 0.18, -radius * 0.15);
+  ctx.moveTo(-length * 0.22, radius * 0.48);
+  ctx.lineTo(-length * 0.02, radius * 0.16);
+  ctx.stroke();
+
+  ctx.fillStyle = "#4ca64c";
+  ctx.beginPath();
+  ctx.moveTo(-length * 0.58, 0);
+  ctx.lineTo(-length * 0.92, -radius * 0.95);
+  ctx.lineTo(-length * 0.78, -radius * 0.1);
+  ctx.lineTo(-length * 1.02, radius * 0.72);
+  ctx.lineTo(-length * 0.55, radius * 0.18);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
 }
 
 function drawScene() {

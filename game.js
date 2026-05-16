@@ -118,7 +118,9 @@ const scoreForm = document.getElementById("scoreForm");
 const playerNameInput = document.getElementById("playerName");
 const scoreSubmitButton = document.getElementById("scoreSubmitButton");
 const scorePromptText = document.getElementById("scorePromptText");
-const leaderboardPanel = document.getElementById("leaderboardPanel");
+const gameOverOverlay = document.getElementById("gameOverOverlay");
+const finalScoreValue = document.getElementById("finalScoreValue");
+const overlayRestartButton = document.getElementById("overlayRestartButton");
 const perkButtons = [...document.querySelectorAll(".perk-button")];
 
 const leaderboard = new LeaderboardService();
@@ -135,6 +137,12 @@ const PERK_COSTS = { fly: 35, magnet: 8, blaster: 32 };
 const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
 const GAME_UPDATES = [
   {
+    dateTime: "2026-05-16T14:45:00+02:00",
+    displayTime: "May 16, 2026 at 14:45",
+    title: "Friendlier Game Over Popup",
+    description: "Game over now opens on top of the gameplay with save and restart controls right where players need them.",
+  },
+  {
     dateTime: "2026-05-16T14:16:00+02:00",
     displayTime: "May 16, 2026 at 14:16",
     title: "More Room For The Game",
@@ -145,12 +153,6 @@ const GAME_UPDATES = [
     displayTime: "May 15, 2026 at 15:59",
     title: "Carrot Blaster Upgrade",
     description: "The blaster perk now fires carrots, with matching labels across the game UI.",
-  },
-  {
-    dateTime: "2026-05-06T09:57:00+02:00",
-    displayTime: "May 6, 2026 at 09:57",
-    title: "Smoother Speed On Mobile",
-    description: "Improved the game loop so obstacles keep a steadier pace on Safari iPhone and Chrome.",
   },
 ];
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -233,21 +235,16 @@ const hudCache = {
   perk: "",
   submitText: "",
   promptText: "",
+  finalScore: "",
+  overlayHidden: null,
   inputDisabled: null,
   submitDisabled: null,
-  mobileGameOver: null,
+  restartDisabled: null,
   perkButtons: new Map(),
 };
 
 let lastTickTime = null;
 let accumulatedTime = 0;
-let isMobileLayout = window.matchMedia("(max-width: 720px)").matches;
-
-window.addEventListener("resize", () => {
-  isMobileLayout = window.matchMedia("(max-width: 720px)").matches;
-  hudCache.submitText = "";
-  hudCache.mobileGameOver = null;
-});
 
 function ensureAudioReady() {
   if (!audioState.enabled || audioState.context) {
@@ -1875,8 +1872,8 @@ function syncHud() {
       ? "Saving..."
       : (state.scoreSaveDecisionPending
       ? "Checking Score..."
-      : (state.forcedScoreSave ? "Save Top Score" : (isMobileLayout ? "Confirm Result / Restart" : "Confirm Result"))))
-    : "Confirm";
+      : (state.forcedScoreSave ? "Save Top Score" : "Save Score")))
+    : "Save";
   const promptText = state.awaitingScoreEntry
     ? (state.scoreSubmissionInProgress
       ? "Saving your score..."
@@ -1884,11 +1881,16 @@ function syncHud() {
       ? "Checking whether your score made the top 3 leaderboard..."
       : (state.forcedScoreSave
         ? "Top 3 score: enter a player name and save it to continue."
-        : "Game paused. Enter a name and confirm to save, or press Space / confirm empty to restart.")))
-    : "Enter a name after game over to save your score.";
+        : "Enter a name to save your score, or restart to skip saving.")))
+    : (state.gameOver && state.scoreSubmitted
+      ? "Score saved. Restart when you are ready for another run."
+      : "Enter a name after game over to save your score.");
+  const finalScoreText = `${state.score}`;
+  const overlayHidden = !state.gameOver;
   const inputDisabled = !state.awaitingScoreEntry;
   const submitDisabled = !state.awaitingScoreEntry || state.scoreSaveDecisionPending || state.scoreSubmissionInProgress;
-  const mobileGameOver = isMobileLayout && state.awaitingScoreEntry;
+  const restartDisabled = state.awaitingScoreEntry
+    && (state.scoreSaveDecisionPending || state.scoreSubmissionInProgress || state.forcedScoreSave);
 
   if (hudCache.score !== scoreText) {
     scoreValue.textContent = scoreText;
@@ -1914,6 +1916,14 @@ function syncHud() {
     scorePromptText.textContent = promptText;
     hudCache.promptText = promptText;
   }
+  if (finalScoreValue && hudCache.finalScore !== finalScoreText) {
+    finalScoreValue.textContent = finalScoreText;
+    hudCache.finalScore = finalScoreText;
+  }
+  if (gameOverOverlay && hudCache.overlayHidden !== overlayHidden) {
+    gameOverOverlay.hidden = overlayHidden;
+    hudCache.overlayHidden = overlayHidden;
+  }
   if (hudCache.inputDisabled !== inputDisabled) {
     playerNameInput.disabled = inputDisabled;
     hudCache.inputDisabled = inputDisabled;
@@ -1922,9 +1932,9 @@ function syncHud() {
     scoreSubmitButton.disabled = submitDisabled;
     hudCache.submitDisabled = submitDisabled;
   }
-  if (hudCache.mobileGameOver !== mobileGameOver) {
-    leaderboardPanel.parentElement.classList.toggle("mobile-game-over", mobileGameOver);
-    hudCache.mobileGameOver = mobileGameOver;
+  if (overlayRestartButton && hudCache.restartDisabled !== restartDisabled) {
+    overlayRestartButton.disabled = restartDisabled;
+    hudCache.restartDisabled = restartDisabled;
   }
 
   for (const button of perkButtons) {
@@ -2022,6 +2032,23 @@ async function submitCurrentScore() {
   } finally {
     state.scoreSubmissionInProgress = false;
   }
+}
+
+function restartFromGameOverOverlay() {
+  if (!state.gameOver || state.scoreSaveDecisionPending || state.scoreSubmissionInProgress) {
+    return;
+  }
+  if (state.awaitingScoreEntry && state.forcedScoreSave) {
+    state.status = "Top 3 score: enter a player name to continue.";
+    playerNameInput.focus();
+    return;
+  }
+  if (state.awaitingScoreEntry) {
+    state.scoreSubmitted = true;
+    state.awaitingScoreEntry = false;
+    state.status = "No name entered, score skipped. Restarting.";
+  }
+  resetGame();
 }
 
 function tick(timestamp = performance.now()) {
@@ -2142,6 +2169,13 @@ scoreForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   await submitCurrentScore();
 });
+
+if (overlayRestartButton) {
+  overlayRestartButton.addEventListener("click", () => {
+    unlockAudio();
+    restartFromGameOverOverlay();
+  });
+}
 
 renderGameUpdates();
 renderLeaderboard();

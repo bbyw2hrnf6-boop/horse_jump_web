@@ -6,7 +6,7 @@
   <meta name="description" content="Horse Jump Web is a browser endless runner with perks, coins, carrots, and online leaderboard support.">
   <meta name="theme-color" content="#dbefff">
   <title>Horse Jump Web</title>
-  <link rel="stylesheet" href="./styles.css?v=20260516-2">
+  <link rel="stylesheet" href="./styles.css?v=20260516-3">
 </head>
 <body>
   <div class="app-shell">
@@ -56,6 +56,20 @@
               </button>
             </div>
           </section>
+
+          <section class="game-over-overlay" id="gameOverOverlay" hidden>
+            <div class="game-over-dialog">
+              <p class="game-over-eyebrow">Run Complete</p>
+              <h2>Game Over</h2>
+              <p class="final-score">Final score: <strong id="finalScoreValue">0</strong></p>
+              <form id="scoreForm" class="score-form">
+                <input id="playerName" name="playerName" maxlength="14" placeholder="Your name" autocomplete="nickname" disabled>
+                <button id="scoreSubmitButton" type="submit" disabled>Save</button>
+              </form>
+              <p class="panel-note" id="scorePromptText">Enter a name after game over to save your score.</p>
+              <button id="overlayRestartButton" class="overlay-restart-button" type="button">Restart</button>
+            </div>
+          </section>
         </div>
 
       </section>
@@ -71,11 +85,6 @@
 
         <section class="panel" id="leaderboardPanel">
           <h2>Leaderboard</h2>
-          <form id="scoreForm" class="score-form">
-            <input id="playerName" name="playerName" maxlength="14" placeholder="Your name" autocomplete="nickname" disabled>
-            <button id="scoreSubmitButton" type="submit" disabled>Confirm</button>
-          </form>
-          <p class="panel-note" id="scorePromptText">Enter a name after game over to save your score.</p>
           <p class="panel-note">Shared online scores load when Firebase is available, with local scores as a fallback.</p>
           <ol id="leaderboardList" class="leaderboard-list"></ol>
           <p class="panel-note" id="leaderboardMode">Mode: local only for now</p>
@@ -86,6 +95,6 @@
 
   <p id="statusText" hidden>Press Space or tap to jump.</p>
   <button id="restartButton" type="button" hidden>Restart</button>
-  <script src="./game.js?v=20260516-2"></script>
+  <script src="./game.js?v=20260516-3"></script>
 </body>
 </html>

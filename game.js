@@ -1957,6 +1957,10 @@ async function renderLeaderboard() {
 }
 
 function renderGameUpdates() {
+  if (!updatesList) {
+    return;
+  }
+
   updatesList.innerHTML = "";
   for (const update of GAME_UPDATES.slice(0, 3)) {
     const item = document.createElement("li");
@@ -1969,7 +1973,9 @@ function renderGameUpdates() {
     title.textContent = update.title;
     description.textContent = update.description;
 
-    item.append(time, title, description);
+    item.appendChild(time);
+    item.appendChild(title);
+    item.appendChild(description);
     updatesList.appendChild(item);
   }
 }

@@ -257,18 +257,26 @@ input:focus-visible {
   overflow-wrap: anywhere;
 }
 
+.updates-panel {
+  padding: 12px 14px;
+}
+
+.updates-panel h2 {
+  font-size: 1.25rem;
+}
+
 .updates-list {
   padding: 0;
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   list-style: none;
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .updates-list li {
   display: grid;
-  gap: 4px;
-  padding: 0 0 12px;
+  gap: 2px;
+  padding: 0 0 8px;
   border-bottom: 1px solid rgba(106, 77, 53, 0.18);
 }
 
@@ -279,17 +287,19 @@ input:focus-visible {
 
 .updates-list time {
   color: var(--accent);
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
 .updates-list strong {
-  font-size: 1rem;
+  font-size: 0.86rem;
+  line-height: 1.14;
 }
 
 .updates-list p {
   color: var(--muted);
-  line-height: 1.28;
+  font-size: 0.78rem;
+  line-height: 1.22;
 }
 
 .panel-note {

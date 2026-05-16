@@ -119,7 +119,6 @@ const playerNameInput = document.getElementById("playerName");
 const scoreSubmitButton = document.getElementById("scoreSubmitButton");
 const scorePromptText = document.getElementById("scorePromptText");
 const leaderboardPanel = document.getElementById("leaderboardPanel");
-const restartButton = document.getElementById("restartButton");
 const perkButtons = [...document.querySelectorAll(".perk-button")];
 
 const leaderboard = new LeaderboardService();
@@ -217,7 +216,6 @@ const hudCache = {
   promptText: "",
   inputDisabled: null,
   submitDisabled: null,
-  restartDisabled: null,
   mobileGameOver: null,
   perkButtons: new Map(),
 };
@@ -343,12 +341,6 @@ function playBullSound() {
   playTone({ frequency: 146.83, duration: 0.16, type: "sawtooth", volume: 0.06, slideTo: 196 });
   playTone({ frequency: 220, duration: 0.12, type: "square", volume: 0.05, when: 0.07, slideTo: 329.63 });
   playTone({ frequency: 329.63, duration: 0.14, type: "sawtooth", volume: 0.05, when: 0.16, slideTo: 493.88 });
-}
-
-function playRestartSound() {
-  playTone({ frequency: 392, duration: 0.05, type: "square", volume: 0.045 });
-  playTone({ frequency: 523.25, duration: 0.06, type: "square", volume: 0.045, when: 0.05 });
-  playTone({ frequency: 659.25, duration: 0.08, type: "triangle", volume: 0.04, when: 0.1 });
 }
 
 function playSaveSound() {
@@ -1877,7 +1869,6 @@ function syncHud() {
     : "Enter a name after game over to save your score.";
   const inputDisabled = !state.awaitingScoreEntry;
   const submitDisabled = !state.awaitingScoreEntry || state.scoreSaveDecisionPending || state.scoreSubmissionInProgress;
-  const restartDisabled = state.awaitingScoreEntry;
   const mobileGameOver = isMobileLayout && state.awaitingScoreEntry;
 
   if (hudCache.score !== scoreText) {
@@ -1915,10 +1906,6 @@ function syncHud() {
   if (hudCache.submitDisabled !== submitDisabled) {
     scoreSubmitButton.disabled = submitDisabled;
     hudCache.submitDisabled = submitDisabled;
-  }
-  if (hudCache.restartDisabled !== restartDisabled) {
-    restartButton.disabled = restartDisabled;
-    hudCache.restartDisabled = restartDisabled;
   }
   if (hudCache.mobileGameOver !== mobileGameOver) {
     leaderboardPanel.parentElement.classList.toggle("mobile-game-over", mobileGameOver);
@@ -1987,7 +1974,7 @@ async function submitCurrentScore() {
   try {
     await leaderboard.submitScore(enteredName, state.score);
     state.awaitingScoreEntry = false;
-    state.status = `Saved score for ${enteredName}. Press Restart or Space to play again.`;
+    state.status = `Saved score for ${enteredName}. Press Space or tap the game to play again.`;
     playSaveSound();
     await renderLeaderboard();
   } catch (_error) {
@@ -2103,12 +2090,6 @@ canvas.addEventListener("touchstart", (event) => {
 
 canvas.addEventListener("dblclick", (event) => {
   event.preventDefault();
-});
-
-restartButton.addEventListener("click", () => {
-  unlockAudio();
-  playRestartSound();
-  resetGame();
 });
 
 for (const button of perkButtons) {

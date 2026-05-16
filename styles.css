@@ -36,24 +36,7 @@ body {
   padding: 12px 10px;
 }
 
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.eyebrow {
-  margin: 0 0 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--accent);
-  font-weight: 700;
-  font-size: 0.8rem;
-}
-
-h1, h2, p {
+h2, p {
   margin: 0;
 }
 
@@ -290,11 +273,6 @@ input:focus-visible {
     min-width: 0;
   }
 
-  .topbar {
-    align-items: start;
-    flex-direction: column;
-  }
-
   .hud-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -327,15 +305,6 @@ input:focus-visible {
   .app-shell {
     width: 100vw;
     padding: 0;
-  }
-
-  h1 {
-    font-size: 1.45rem;
-  }
-
-  .topbar {
-    padding: 8px 10px 0;
-    margin-bottom: 10px;
   }
 
   .layout {

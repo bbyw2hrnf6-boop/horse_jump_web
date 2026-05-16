@@ -111,7 +111,7 @@ const scoreValue = document.getElementById("scoreValue");
 const coinValue = document.getElementById("coinValue");
 const areaValue = document.getElementById("areaValue");
 const perkValue = document.getElementById("perkValue");
-const statusText = document.getElementById("statusText");
+const updatesList = document.getElementById("updatesList");
 const leaderboardList = document.getElementById("leaderboardList");
 const leaderboardMode = document.getElementById("leaderboardMode");
 const scoreForm = document.getElementById("scoreForm");
@@ -133,6 +133,26 @@ const MAX_SIMULATION_STEPS = 4;
 const FRIDAY_EVENT_ACTIVE = new Date().getDay() === 5;
 const PERK_COSTS = { fly: 35, magnet: 8, blaster: 32 };
 const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
+const GAME_UPDATES = [
+  {
+    dateTime: "2026-05-16T14:16:00+02:00",
+    displayTime: "May 16, 2026 at 14:16",
+    title: "More Room For The Game",
+    description: "Removed the top title bar and restart button so desktop and mobile players get more screen space.",
+  },
+  {
+    dateTime: "2026-05-15T15:59:00+02:00",
+    displayTime: "May 15, 2026 at 15:59",
+    title: "Carrot Blaster Upgrade",
+    description: "The blaster perk now fires carrots, with matching labels across the game UI.",
+  },
+  {
+    dateTime: "2026-05-06T09:57:00+02:00",
+    displayTime: "May 6, 2026 at 09:57",
+    title: "Smoother Speed On Mobile",
+    description: "Improved the game loop so obstacles keep a steadier pace on Safari iPhone and Chrome.",
+  },
+];
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 
 const audioState = {
@@ -211,7 +231,6 @@ const hudCache = {
   coins: "",
   area: "",
   perk: "",
-  status: "",
   submitText: "",
   promptText: "",
   inputDisabled: null,
@@ -1887,10 +1906,6 @@ function syncHud() {
     perkValue.textContent = perkText;
     hudCache.perk = perkText;
   }
-  if (hudCache.status !== state.status) {
-    statusText.textContent = state.status;
-    hudCache.status = state.status;
-  }
   if (hudCache.submitText !== submitText) {
     scoreSubmitButton.textContent = submitText;
     hudCache.submitText = submitText;
@@ -1939,6 +1954,24 @@ async function renderLeaderboard() {
     leaderboardList.appendChild(item);
   }
   leaderboardMode.textContent = `Mode: ${leaderboard.mode} leaderboard`;
+}
+
+function renderGameUpdates() {
+  updatesList.innerHTML = "";
+  for (const update of GAME_UPDATES.slice(0, 3)) {
+    const item = document.createElement("li");
+    const time = document.createElement("time");
+    const title = document.createElement("strong");
+    const description = document.createElement("p");
+
+    time.dateTime = update.dateTime;
+    time.textContent = update.displayTime;
+    title.textContent = update.title;
+    description.textContent = update.description;
+
+    item.append(time, title, description);
+    updatesList.appendChild(item);
+  }
 }
 
 async function isTopThreeScore(score) {
@@ -2104,6 +2137,7 @@ scoreForm.addEventListener("submit", async (event) => {
   await submitCurrentScore();
 });
 
+renderGameUpdates();
 renderLeaderboard();
 syncHud();
 tick();

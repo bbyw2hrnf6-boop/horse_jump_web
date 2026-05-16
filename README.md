@@ -24,3 +24,5 @@ Then open `http://localhost:4173/`.
 ## Commit Notes
 
 This project is static and has no build step. Before committing, open the page in a browser and confirm the game starts, jumps, and the leaderboard panel loads or falls back locally.
+
+For each deployment, update `GAME_UPDATES` in `game.js` with the latest player-facing release note. The game shows the newest 3 entries in the Latest Updates panel.

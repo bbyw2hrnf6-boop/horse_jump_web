@@ -177,10 +177,10 @@ const PERK_COSTS = { fly: 35, magnet: 8, blaster: 32 };
 const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
 const GAME_UPDATES = [
   {
-    dateTime: "2026-05-19T17:41:00+02:00",
-    displayTime: "May 19, 2026 at 17:41",
-    title: "Better Mobile Playfield",
-    description: "Mobile now uses a taller playfield with smaller perk controls below the game, keeping the full horizontal view visible.",
+    dateTime: "2026-05-19T17:53:00+02:00",
+    displayTime: "May 19, 2026 at 17:53",
+    title: "Restored Mobile Layout",
+    description: "Mobile gameplay is back to the cleaner layout with compact perks below the game and desktop perk alignment fixed.",
   },
   {
     dateTime: "2026-05-19T14:12:00+02:00",

@@ -6,36 +6,36 @@
   <meta name="description" content="Horse Jump Web is a browser endless runner with perks, coins, carrots, and online leaderboard support.">
   <meta name="theme-color" content="#dbefff">
   <title>Horse Jump Web</title>
-  <link rel="stylesheet" href="./styles.css?v=20260519-6">
+  <link rel="stylesheet" href="./styles.css?v=20260519-8">
 </head>
 <body>
   <div class="app-shell">
     <main class="layout">
       <section class="game-panel">
-        <div class="hud-row">
-          <div class="hud-card">
-            <span class="label">Score</span>
-            <strong id="scoreValue">0</strong>
-          </div>
-          <div class="hud-card">
-            <span class="label">Coins</span>
-            <strong id="coinValue">0</strong>
-          </div>
-          <div class="hud-card">
-            <span class="label">Area</span>
-            <strong id="areaValue">1</strong>
-          </div>
-          <div class="hud-card">
-            <span class="label">Perk</span>
-            <strong id="perkValue">None</strong>
-          </div>
-        </div>
-
         <div class="game-stage">
           <div class="playfield">
             <canvas id="gameCanvas" width="960" height="640" aria-label="Horse Jump endless runner game" role="img">
               Horse Jump Web needs a browser with canvas support.
             </canvas>
+
+            <div class="hud-row">
+              <div class="hud-card">
+                <span class="label">Score</span>
+                <strong id="scoreValue">0</strong>
+              </div>
+              <div class="hud-card">
+                <span class="label">Coins</span>
+                <strong id="coinValue">0</strong>
+              </div>
+              <div class="hud-card">
+                <span class="label">Area</span>
+                <strong id="areaValue">1</strong>
+              </div>
+              <div class="hud-card">
+                <span class="label">Perk</span>
+                <strong id="perkValue">None</strong>
+              </div>
+            </div>
 
             <section class="corner-perk-dash panel" id="perksPanel">
               <h2>Perks</h2>
@@ -102,6 +102,6 @@
 
   <p id="statusText" hidden>Press Space or tap to jump.</p>
   <button id="restartButton" type="button" hidden>Restart</button>
-  <script src="./game.js?v=20260519-6"></script>
+  <script src="./game.js?v=20260519-8"></script>
 </body>
 </html>

@@ -165,9 +165,14 @@ const perkButtons = [...document.querySelectorAll(".perk-button")];
 
 const leaderboard = new LeaderboardService();
 
+const DESKTOP_CANVAS_HEIGHT = 640;
+const MOBILE_CANVAS_HEIGHT = 840;
+const mobileCanvasQuery = window.matchMedia("(max-width: 720px)");
+canvas.height = mobileCanvasQuery.matches ? MOBILE_CANVAS_HEIGHT : DESKTOP_CANVAS_HEIGHT;
+
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
-const GROUND_Y = 464;
+const GROUND_Y = Math.round(HEIGHT * 0.725);
 const OBSTACLE_SCALE = 1.24;
 const PICKUP_SCALE = 1.16;
 const SIMULATION_STEP_MS = 1000 / 60;
@@ -177,22 +182,22 @@ const PERK_COSTS = { fly: 35, magnet: 8, blaster: 32 };
 const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
 const GAME_UPDATES = [
   {
+    dateTime: "2026-05-19T18:12:00+02:00",
+    displayTime: "May 19, 2026 at 18:12",
+    title: "Taller Mobile Field",
+    description: "Mobile gets more vertical gameplay space, and perks use the same smaller translucent style as the mini HUD.",
+  },
+  {
+    dateTime: "2026-05-19T18:07:00+02:00",
+    displayTime: "May 19, 2026 at 18:07",
+    title: "In-Game Mini HUD",
+    description: "Score, coins, area, and active perk now sit inside the playfield as a tiny translucent overlay.",
+  },
+  {
     dateTime: "2026-05-19T18:03:00+02:00",
     displayTime: "May 19, 2026 at 18:03",
     title: "Taller Game View",
     description: "The playfield is taller on desktop and mobile while horse, obstacle, and horizontal spacing stay the same.",
-  },
-  {
-    dateTime: "2026-05-19T17:59:00+02:00",
-    displayTime: "May 19, 2026 at 17:59",
-    title: "Smaller Perk Warning",
-    description: "Expiring perk warnings are now a compact badge, so they cover less of the gameplay.",
-  },
-  {
-    dateTime: "2026-05-19T17:53:00+02:00",
-    displayTime: "May 19, 2026 at 17:53",
-    title: "Restored Mobile Layout",
-    description: "Mobile gameplay is back to the cleaner layout with compact perks below the game and desktop perk alignment fixed.",
   },
 ];
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;

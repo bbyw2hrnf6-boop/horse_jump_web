@@ -177,6 +177,12 @@ const PERK_COSTS = { fly: 35, magnet: 8, blaster: 32 };
 const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
 const GAME_UPDATES = [
   {
+    dateTime: "2026-05-19T17:59:00+02:00",
+    displayTime: "May 19, 2026 at 17:59",
+    title: "Smaller Perk Warning",
+    description: "Expiring perk warnings are now a compact badge, so they cover less of the gameplay.",
+  },
+  {
     dateTime: "2026-05-19T17:53:00+02:00",
     displayTime: "May 19, 2026 at 17:53",
     title: "Restored Mobile Layout",
@@ -187,12 +193,6 @@ const GAME_UPDATES = [
     displayTime: "May 19, 2026 at 14:12",
     title: "Paged Scoreboard",
     description: "Leaderboard results now use pages of 20 scores and show when each archived score was saved.",
-  },
-  {
-    dateTime: "2026-05-16T14:45:00+02:00",
-    displayTime: "May 16, 2026 at 14:45",
-    title: "Friendlier Game Over Popup",
-    description: "Game over now opens on top of the gameplay with save and restart controls right where players need them.",
   },
 ];
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -1870,22 +1870,20 @@ function drawScene() {
 
   if (perkCountdown) {
     ctx.save();
-    ctx.fillStyle = "rgba(191, 109, 46, 0.12)";
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    ctx.fillStyle = "rgba(255, 248, 239, 0.94)";
+    ctx.fillStyle = "rgba(255, 248, 239, 0.9)";
     ctx.strokeStyle = "#bf6d2e";
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.roundRect(WIDTH / 2 - 120, 56, 240, 108, 22);
+    ctx.roundRect(WIDTH / 2 - 88, 58, 176, 62, 16);
     ctx.fill();
     ctx.stroke();
     ctx.fillStyle = "#8f3029";
-    ctx.font = "bold 20px Trebuchet MS";
+    ctx.font = "bold 13px Trebuchet MS";
     ctx.textAlign = "center";
-    ctx.fillText(`${perkCountdown.name} ending`, WIDTH / 2, 92);
+    ctx.fillText(`${perkCountdown.name} ending`, WIDTH / 2, 80);
     ctx.fillStyle = "#2f241b";
-    ctx.font = "bold 52px Trebuchet MS";
-    ctx.fillText(`${perkCountdown.secondsLeft}`, WIDTH / 2, 138);
+    ctx.font = "bold 30px Trebuchet MS";
+    ctx.fillText(`${perkCountdown.secondsLeft}`, WIDTH / 2, 111);
     ctx.restore();
   }
 

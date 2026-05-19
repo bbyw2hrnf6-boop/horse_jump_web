@@ -498,32 +498,26 @@ input:focus-visible {
 
   .playfield {
     width: 100vw;
-    height: min(80vw, 340px);
+    height: min(90vw, 380px);
     border-radius: 0;
   }
 
   canvas {
     width: 100vw;
     max-width: 100vw;
-    height: auto;
+    height: 100%;
     border-radius: 0;
-    transform: scale(1.42);
-    transform-origin: center top;
   }
 
   .corner-perk-dash {
-    position: absolute;
-    top: auto;
-    right: 8px;
-    bottom: 8px;
-    left: 8px;
-    width: auto;
-    margin: 0;
-    padding: 6px;
+    position: static;
+    width: calc(100vw - 16px);
+    margin: 8px 8px 0;
+    padding: 6px 8px;
     border-radius: 12px;
     backdrop-filter: none;
-    background: rgba(255, 250, 241, 0.78);
-    box-shadow: 0 10px 22px rgba(64, 42, 18, 0.14);
+    background: rgba(255, 250, 241, 0.94);
+    box-shadow: 0 10px 22px rgba(64, 42, 18, 0.1);
   }
 
   .corner-perk-dash .perk-list {
@@ -537,7 +531,7 @@ input:focus-visible {
 
   .perk-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 5px;
+    gap: 6px;
   }
 
   .perk-button {
@@ -551,9 +545,9 @@ input:focus-visible {
   .corner-perk-dash .perk-button {
     grid-template-columns: 1fr;
     gap: 2px;
-    padding: 6px 4px;
+    padding: 6px 5px;
     border-width: 1px;
-    background: rgba(255, 248, 238, 0.86);
+    background: rgba(255, 248, 238, 0.96);
   }
 
   .corner-perk-dash .perk-button span {

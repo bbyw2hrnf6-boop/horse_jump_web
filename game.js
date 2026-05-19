@@ -167,7 +167,7 @@ const leaderboard = new LeaderboardService();
 
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
-const GROUND_Y = 392;
+const GROUND_Y = 464;
 const OBSTACLE_SCALE = 1.24;
 const PICKUP_SCALE = 1.16;
 const SIMULATION_STEP_MS = 1000 / 60;
@@ -176,6 +176,12 @@ const FRIDAY_EVENT_ACTIVE = new Date().getDay() === 5;
 const PERK_COSTS = { fly: 35, magnet: 8, blaster: 32 };
 const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
 const GAME_UPDATES = [
+  {
+    dateTime: "2026-05-19T18:03:00+02:00",
+    displayTime: "May 19, 2026 at 18:03",
+    title: "Taller Game View",
+    description: "The playfield is taller on desktop and mobile while horse, obstacle, and horizontal spacing stay the same.",
+  },
   {
     dateTime: "2026-05-19T17:59:00+02:00",
     displayTime: "May 19, 2026 at 17:59",
@@ -187,12 +193,6 @@ const GAME_UPDATES = [
     displayTime: "May 19, 2026 at 17:53",
     title: "Restored Mobile Layout",
     description: "Mobile gameplay is back to the cleaner layout with compact perks below the game and desktop perk alignment fixed.",
-  },
-  {
-    dateTime: "2026-05-19T14:12:00+02:00",
-    displayTime: "May 19, 2026 at 14:12",
-    title: "Paged Scoreboard",
-    description: "Leaderboard results now use pages of 20 scores and show when each archived score was saved.",
   },
 ];
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;

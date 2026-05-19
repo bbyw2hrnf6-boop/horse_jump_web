@@ -1,4 +1,5 @@
 const LOCAL_STORAGE_KEY = "horse-jump-web-local-leaderboard";
+const LEADERBOARD_PAGE_SIZE = 20;
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyAukUvsI-plRUwP_dX34v-xGe34yERqoSI",
   authDomain: "horse-jump-scoreboard.firebaseapp.com",
@@ -15,6 +16,7 @@ class LeaderboardService {
     this.db = null;
     this.firebaseReady = false;
     this.firebaseFns = null;
+    this.pageCursors = [null];
     this.ready = this.initFirebase();
   }
 
@@ -34,32 +36,63 @@ class LeaderboardService {
     }
   }
 
-  async listTopScores() {
+  resetPagination() {
+    this.pageCursors = [null];
+  }
+
+  normalizeScoreEntry(data) {
+    return {
+      name: typeof data.name === "string" ? data.name : "Player",
+      score: Number.isFinite(data.score) ? data.score : 0,
+      createdAt: data.createdAt?.toDate?.()?.toISOString?.() || (typeof data.createdAt === "string" ? data.createdAt : null),
+    };
+  }
+
+  async listScorePage(pageIndex = 0, pageSize = LEADERBOARD_PAGE_SIZE) {
     await this.ready;
     if (this.firebaseReady && this.db && this.firebaseFns) {
       try {
         const scoresRef = this.firebaseFns.collection(this.db, FIRESTORE_COLLECTION);
-        const topScoresQuery = this.firebaseFns.query(
-          scoresRef,
+        const constraints = [
           this.firebaseFns.orderBy("score", "desc"),
-          this.firebaseFns.limit(20),
-        );
+        ];
+        const cursor = this.pageCursors[pageIndex];
+        if (cursor) {
+          constraints.push(this.firebaseFns.startAfter(cursor));
+        }
+        constraints.push(this.firebaseFns.limit(pageSize + 1));
+
+        const topScoresQuery = this.firebaseFns.query(scoresRef, ...constraints);
         const snapshot = await this.firebaseFns.getDocs(topScoresQuery);
-        const scores = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            name: typeof data.name === "string" ? data.name : "Player",
-            score: Number.isFinite(data.score) ? data.score : 0,
-            createdAt: data.createdAt?.toDate?.()?.toISOString?.() || null,
-          };
-        });
+        const pageDocs = snapshot.docs.slice(0, pageSize);
+        if (pageDocs.length > 0) {
+          this.pageCursors[pageIndex + 1] = pageDocs[pageDocs.length - 1];
+        }
+        const scores = pageDocs.map((doc) => this.normalizeScoreEntry(doc.data()));
         this.mode = "firebase";
-        return scores;
+        return {
+          scores,
+          pageIndex,
+          hasPrevious: pageIndex > 0,
+          hasNext: snapshot.docs.length > pageSize,
+        };
       } catch (_error) {
         this.mode = "local-fallback";
       }
     }
-    return this.readLocalScores();
+    const allScores = this.readLocalScores();
+    const start = pageIndex * pageSize;
+    return {
+      scores: allScores.slice(start, start + pageSize),
+      pageIndex,
+      hasPrevious: pageIndex > 0,
+      hasNext: start + pageSize < allScores.length,
+    };
+  }
+
+  async listTopScores() {
+    const page = await this.listScorePage(0, LEADERBOARD_PAGE_SIZE);
+    return page.scores;
   }
 
   async submitScore(name, score) {
@@ -73,6 +106,7 @@ class LeaderboardService {
           createdAt: this.firebaseFns.serverTimestamp(),
         });
         this.mode = "firebase";
+        this.resetPagination();
         return this.listTopScores();
       } catch (_error) {
         this.mode = "local-fallback";
@@ -85,8 +119,9 @@ class LeaderboardService {
       createdAt: new Date().toISOString(),
     });
     entries.sort((a, b) => b.score - a.score);
-    const trimmed = entries.slice(0, 20);
+    const trimmed = entries.slice(0, 500);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(trimmed));
+    this.resetPagination();
     return trimmed;
   }
 
@@ -95,7 +130,9 @@ class LeaderboardService {
       const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
       const parsed = raw ? JSON.parse(raw) : [];
       if (Array.isArray(parsed)) {
-        return parsed;
+        return parsed
+          .map((entry) => this.normalizeScoreEntry(entry))
+          .sort((a, b) => b.score - a.score);
       }
     } catch (_error) {
       return [];
@@ -114,6 +151,9 @@ const perkValue = document.getElementById("perkValue");
 const updatesList = document.getElementById("updatesList");
 const leaderboardList = document.getElementById("leaderboardList");
 const leaderboardMode = document.getElementById("leaderboardMode");
+const leaderboardPrevButton = document.getElementById("leaderboardPrevButton");
+const leaderboardNextButton = document.getElementById("leaderboardNextButton");
+const leaderboardPageLabel = document.getElementById("leaderboardPageLabel");
 const scoreForm = document.getElementById("scoreForm");
 const playerNameInput = document.getElementById("playerName");
 const scoreSubmitButton = document.getElementById("scoreSubmitButton");
@@ -137,6 +177,12 @@ const PERK_COSTS = { fly: 35, magnet: 8, blaster: 32 };
 const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
 const GAME_UPDATES = [
   {
+    dateTime: "2026-05-19T14:12:00+02:00",
+    displayTime: "May 19, 2026 at 14:12",
+    title: "Paged Scoreboard",
+    description: "Leaderboard results now use pages of 20 scores and show when each archived score was saved.",
+  },
+  {
     dateTime: "2026-05-16T14:45:00+02:00",
     displayTime: "May 16, 2026 at 14:45",
     title: "Friendlier Game Over Popup",
@@ -147,12 +193,6 @@ const GAME_UPDATES = [
     displayTime: "May 16, 2026 at 14:16",
     title: "More Room For The Game",
     description: "Removed the top title bar and restart button so desktop and mobile players get more screen space.",
-  },
-  {
-    dateTime: "2026-05-15T15:59:00+02:00",
-    displayTime: "May 15, 2026 at 15:59",
-    title: "Carrot Blaster Upgrade",
-    description: "The blaster perk now fires carrots, with matching labels across the game UI.",
   },
 ];
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -245,6 +285,8 @@ const hudCache = {
 
 let lastTickTime = null;
 let accumulatedTime = 0;
+let leaderboardPageIndex = 0;
+let leaderboardLoading = false;
 
 function ensureAudioReady() {
   if (!audioState.enabled || audioState.context) {
@@ -1955,15 +1997,106 @@ function syncHud() {
   }
 }
 
-async function renderLeaderboard() {
-  const scores = await leaderboard.listTopScores();
-  leaderboardList.innerHTML = "";
-  for (const entry of scores.slice(0, 20)) {
-    const item = document.createElement("li");
-    item.textContent = `${entry.name} - ${entry.score}`;
-    leaderboardList.appendChild(item);
+function formatScoreTimestamp(createdAt) {
+  if (!createdAt) {
+    return "Saved time unknown";
   }
-  leaderboardMode.textContent = `Mode: ${leaderboard.mode} leaderboard`;
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) {
+    return "Saved time unknown";
+  }
+  return `Saved ${date.toLocaleString([], {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+}
+
+async function renderLeaderboard(pageIndex = leaderboardPageIndex) {
+  if (!leaderboardList) {
+    return;
+  }
+  if (leaderboardLoading) {
+    return;
+  }
+  leaderboardLoading = true;
+  if (leaderboardPrevButton) {
+    leaderboardPrevButton.disabled = true;
+  }
+  if (leaderboardNextButton) {
+    leaderboardNextButton.disabled = true;
+  }
+  if (leaderboardPageLabel) {
+    leaderboardPageLabel.textContent = `Loading page ${pageIndex + 1}...`;
+  }
+
+  try {
+    const page = await leaderboard.listScorePage(pageIndex, LEADERBOARD_PAGE_SIZE);
+    leaderboardPageIndex = page.pageIndex;
+    leaderboardList.innerHTML = "";
+
+    if (page.scores.length === 0) {
+      const item = document.createElement("li");
+      item.className = "leaderboard-empty";
+      item.textContent = page.pageIndex === 0
+        ? "No scores yet."
+        : "No scores on this page yet.";
+      leaderboardList.appendChild(item);
+    } else {
+      page.scores.forEach((entry, index) => {
+        const item = document.createElement("li");
+        const rank = document.createElement("span");
+        const details = document.createElement("span");
+        const timestamp = document.createElement("time");
+        const rankNumber = page.pageIndex * LEADERBOARD_PAGE_SIZE + index + 1;
+
+        rank.className = "leaderboard-rank";
+        rank.textContent = `#${rankNumber}`;
+        details.className = "leaderboard-score-details";
+        details.textContent = `${entry.name} - ${entry.score}`;
+        timestamp.className = "leaderboard-timestamp";
+        if (entry.createdAt) {
+          timestamp.dateTime = entry.createdAt;
+        }
+        timestamp.textContent = formatScoreTimestamp(entry.createdAt);
+
+        item.appendChild(rank);
+        item.appendChild(details);
+        item.appendChild(timestamp);
+        leaderboardList.appendChild(item);
+      });
+    }
+
+    if (leaderboardPrevButton) {
+      leaderboardPrevButton.disabled = !page.hasPrevious;
+    }
+    if (leaderboardNextButton) {
+      leaderboardNextButton.disabled = !page.hasNext;
+    }
+    if (leaderboardPageLabel) {
+      leaderboardPageLabel.textContent = `Page ${page.pageIndex + 1}`;
+    }
+    leaderboardMode.textContent = `Mode: ${leaderboard.mode} leaderboard`;
+  } catch (_error) {
+    leaderboardList.innerHTML = "";
+    const item = document.createElement("li");
+    item.className = "leaderboard-empty";
+    item.textContent = "Could not load scores. Please try again.";
+    leaderboardList.appendChild(item);
+    if (leaderboardPrevButton) {
+      leaderboardPrevButton.disabled = leaderboardPageIndex === 0;
+    }
+    if (leaderboardNextButton) {
+      leaderboardNextButton.disabled = false;
+    }
+    if (leaderboardPageLabel) {
+      leaderboardPageLabel.textContent = `Page ${leaderboardPageIndex + 1}`;
+    }
+  } finally {
+    leaderboardLoading = false;
+  }
 }
 
 function renderGameUpdates() {
@@ -2025,7 +2158,8 @@ async function submitCurrentScore() {
     state.awaitingScoreEntry = false;
     state.status = `Saved score for ${enteredName}. Press Space or tap the game to play again.`;
     playSaveSound();
-    await renderLeaderboard();
+    leaderboard.resetPagination();
+    await renderLeaderboard(0);
   } catch (_error) {
     state.scoreSubmitted = false;
     state.status = "Score could not be saved. Please try again.";
@@ -2169,6 +2303,18 @@ scoreForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   await submitCurrentScore();
 });
+
+if (leaderboardPrevButton) {
+  leaderboardPrevButton.addEventListener("click", () => {
+    renderLeaderboard(Math.max(0, leaderboardPageIndex - 1));
+  });
+}
+
+if (leaderboardNextButton) {
+  leaderboardNextButton.addEventListener("click", () => {
+    renderLeaderboard(leaderboardPageIndex + 1);
+  });
+}
 
 if (overlayRestartButton) {
   overlayRestartButton.addEventListener("click", () => {

@@ -64,6 +64,12 @@ h2, p {
   min-width: 0;
 }
 
+.playfield {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+}
+
 .game-over-overlay {
   position: absolute;
   inset: 0;
@@ -138,6 +144,7 @@ h2, p {
   border: 2px solid #ccb396;
   border-radius: 16px;
   padding: 10px 14px;
+  min-width: 0;
 }
 
 .hud-card .label {
@@ -156,7 +163,6 @@ canvas {
   max-width: 100%;
   height: auto;
   display: block;
-  border-radius: 14px;
   border: 0;
   touch-action: manipulation;
   background: linear-gradient(180deg, #d6efff 0%, #f7f2e2 100%);
@@ -317,13 +323,14 @@ input:focus-visible {
 
 .leaderboard-pager {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   margin-top: 14px;
 }
 
 .leaderboard-pager button {
+  min-width: 0;
   padding: 8px 10px;
   font-size: 0.82rem;
 }
@@ -455,37 +462,68 @@ input:focus-visible {
   }
 
   .hud-row {
-    margin-left: 10px;
-    margin-right: 10px;
-  }
-
-  .hud-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    margin-bottom: 8px;
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    z-index: 4;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    margin: 0;
+    pointer-events: none;
   }
 
   .hud-card {
-    padding: 10px 12px;
+    padding: 5px 6px;
+    border-width: 1px;
+    border-radius: 10px;
+    background: rgba(255, 251, 244, 0.82);
+    box-shadow: 0 8px 18px rgba(47, 36, 27, 0.08);
+  }
+
+  .hud-card .label {
+    font-size: 0.58rem;
+    margin-bottom: 1px;
   }
 
   .hud-card strong {
-    font-size: 1.2rem;
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    font-size: clamp(0.78rem, 3.4vw, 1rem);
+    line-height: 1.05;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  canvas {
+  .playfield {
+    width: 100vw;
+    height: min(80vw, 340px);
     border-radius: 0;
   }
 
+  canvas {
+    width: 100vw;
+    max-width: 100vw;
+    height: auto;
+    border-radius: 0;
+    transform: scale(1.42);
+    transform-origin: center top;
+  }
+
   .corner-perk-dash {
-    position: static;
-    width: calc(100vw - 20px);
-    margin-left: 10px;
-    margin-right: 10px;
-    margin-top: 10px;
-    padding: 10px;
-    border-radius: 14px;
+    position: absolute;
+    top: auto;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    width: auto;
+    margin: 0;
+    padding: 6px;
+    border-radius: 12px;
     backdrop-filter: none;
+    background: rgba(255, 250, 241, 0.78);
+    box-shadow: 0 10px 22px rgba(64, 42, 18, 0.14);
   }
 
   .corner-perk-dash .perk-list {
@@ -499,7 +537,7 @@ input:focus-visible {
 
   .perk-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    gap: 5px;
   }
 
   .perk-button {
@@ -512,22 +550,25 @@ input:focus-visible {
 
   .corner-perk-dash .perk-button {
     grid-template-columns: 1fr;
-    gap: 4px;
-    padding: 10px 6px;
+    gap: 2px;
+    padding: 6px 4px;
+    border-width: 1px;
+    background: rgba(255, 248, 238, 0.86);
   }
 
   .corner-perk-dash .perk-button span {
-    width: 28px;
-    height: 28px;
+    width: 22px;
+    height: 22px;
+    font-size: 0.72rem;
   }
 
   .corner-perk-dash .perk-button strong {
-    font-size: clamp(0.68rem, 2.7vw, 0.78rem);
+    font-size: clamp(0.58rem, 2.4vw, 0.72rem);
   }
 
   .corner-perk-dash .perk-button small {
     display: block;
-    font-size: 0.68rem;
+    font-size: 0.58rem;
   }
 
   .perk-button strong,

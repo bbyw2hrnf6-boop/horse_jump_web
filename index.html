@@ -6,70 +6,72 @@
   <meta name="description" content="Horse Jump Web is a browser endless runner with perks, coins, carrots, and online leaderboard support.">
   <meta name="theme-color" content="#dbefff">
   <title>Horse Jump Web</title>
-  <link rel="stylesheet" href="./styles.css?v=20260519-1">
+  <link rel="stylesheet" href="./styles.css?v=20260519-2">
 </head>
 <body>
   <div class="app-shell">
     <main class="layout">
       <section class="game-panel">
-        <div class="hud-row">
-          <div class="hud-card">
-            <span class="label">Score</span>
-            <strong id="scoreValue">0</strong>
-          </div>
-          <div class="hud-card">
-            <span class="label">Coins</span>
-            <strong id="coinValue">0</strong>
-          </div>
-          <div class="hud-card">
-            <span class="label">Area</span>
-            <strong id="areaValue">1</strong>
-          </div>
-          <div class="hud-card">
-            <span class="label">Perk</span>
-            <strong id="perkValue">None</strong>
-          </div>
-        </div>
-
         <div class="game-stage">
-          <canvas id="gameCanvas" width="960" height="540" aria-label="Horse Jump endless runner game" role="img">
-            Horse Jump Web needs a browser with canvas support.
-          </canvas>
-
-          <section class="corner-perk-dash panel" id="perksPanel">
-            <h2>Perks</h2>
-            <div class="perk-list">
-              <button class="perk-button" data-perk="fly" type="button">
-                <span>1</span>
-                <strong>Fly</strong>
-                <small>35 coins</small>
-              </button>
-              <button class="perk-button" data-perk="magnet" type="button">
-                <span>2</span>
-                <strong>Magnet</strong>
-                <small>28 coins</small>
-              </button>
-              <button class="perk-button" data-perk="blaster" type="button">
-                <span>3</span>
-                <strong>Carrot Blaster</strong>
-                <small>32 coins</small>
-              </button>
+          <div class="hud-row">
+            <div class="hud-card">
+              <span class="label">Score</span>
+              <strong id="scoreValue">0</strong>
             </div>
-          </section>
-
-          <section class="game-over-overlay" id="gameOverOverlay" hidden>
-            <div class="game-over-dialog">
-              <p class="game-over-eyebrow">Run Complete</p>
-              <h2>Game Over</h2>
-              <p class="final-score">Final score: <strong id="finalScoreValue">0</strong></p>
-              <form id="scoreForm" class="score-form">
-                <input id="playerName" name="playerName" maxlength="14" placeholder="Your name" autocomplete="nickname" disabled>
-                <button id="scoreSubmitButton" type="submit" disabled>Save</button>
-              </form>
-              <p class="panel-note" id="scorePromptText">Enter a name after game over to save your score.</p>
-              <button id="overlayRestartButton" class="overlay-restart-button" type="button">Restart</button>
+            <div class="hud-card">
+              <span class="label">Coins</span>
+              <strong id="coinValue">0</strong>
             </div>
-          </section>
+            <div class="hud-card">
+              <span class="label">Area</span>
+              <strong id="areaValue">1</strong>
+            </div>
+            <div class="hud-card">
+              <span class="label">Perk</span>
+              <strong id="perkValue">None</strong>
+            </div>
+          </div>
+
+          <div class="playfield">
+            <canvas id="gameCanvas" width="960" height="540" aria-label="Horse Jump endless runner game" role="img">
+              Horse Jump Web needs a browser with canvas support.
+            </canvas>
+
+            <section class="corner-perk-dash panel" id="perksPanel">
+              <h2>Perks</h2>
+              <div class="perk-list">
+                <button class="perk-button" data-perk="fly" type="button">
+                  <span>1</span>
+                  <strong>Fly</strong>
+                  <small>35 coins</small>
+                </button>
+                <button class="perk-button" data-perk="magnet" type="button">
+                  <span>2</span>
+                  <strong>Magnet</strong>
+                  <small>28 coins</small>
+                </button>
+                <button class="perk-button" data-perk="blaster" type="button">
+                  <span>3</span>
+                  <strong>Carrot Blaster</strong>
+                  <small>32 coins</small>
+                </button>
+              </div>
+            </section>
+
+            <section class="game-over-overlay" id="gameOverOverlay" hidden>
+              <div class="game-over-dialog">
+                <p class="game-over-eyebrow">Run Complete</p>
+                <h2>Game Over</h2>
+                <p class="final-score">Final score: <strong id="finalScoreValue">0</strong></p>
+                <form id="scoreForm" class="score-form">
+                  <input id="playerName" name="playerName" maxlength="14" placeholder="Your name" autocomplete="nickname" disabled>
+                  <button id="scoreSubmitButton" type="submit" disabled>Save</button>
+                </form>
+                <p class="panel-note" id="scorePromptText">Enter a name after game over to save your score.</p>
+                <button id="overlayRestartButton" class="overlay-restart-button" type="button">Restart</button>
+              </div>
+            </section>
+          </div>
         </div>
 
       </section>
@@ -100,6 +102,6 @@
 
   <p id="statusText" hidden>Press Space or tap to jump.</p>
   <button id="restartButton" type="button" hidden>Restart</button>
-  <script src="./game.js?v=20260519-1"></script>
+  <script src="./game.js?v=20260519-2"></script>
 </body>
 </html>

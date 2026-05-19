@@ -177,6 +177,12 @@ const PERK_COSTS = { fly: 35, magnet: 8, blaster: 32 };
 const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
 const GAME_UPDATES = [
   {
+    dateTime: "2026-05-19T17:29:00+02:00",
+    displayTime: "May 19, 2026 at 17:29",
+    title: "Bigger Mobile Gameplay",
+    description: "Mobile now gives the playfield more space by overlaying compact HUD and perk controls on the game.",
+  },
+  {
     dateTime: "2026-05-19T14:12:00+02:00",
     displayTime: "May 19, 2026 at 14:12",
     title: "Paged Scoreboard",
@@ -187,12 +193,6 @@ const GAME_UPDATES = [
     displayTime: "May 16, 2026 at 14:45",
     title: "Friendlier Game Over Popup",
     description: "Game over now opens on top of the gameplay with save and restart controls right where players need them.",
-  },
-  {
-    dateTime: "2026-05-16T14:16:00+02:00",
-    displayTime: "May 16, 2026 at 14:16",
-    title: "More Room For The Game",
-    description: "Removed the top title bar and restart button so desktop and mobile players get more screen space.",
   },
 ];
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;

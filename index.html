@@ -6,7 +6,7 @@
   <meta name="description" content="Horse Jump Web is a browser endless runner with perks, coins, carrots, and online leaderboard support.">
   <meta name="theme-color" content="#dbefff">
   <title>Horse Jump Web</title>
-  <link rel="stylesheet" href="./styles.css?v=20260519-8">
+  <link rel="stylesheet" href="./styles.css?v=20260519-9">
 </head>
 <body>
   <div class="app-shell">
@@ -82,12 +82,11 @@
           <ol class="updates-list" id="updatesList">
             <li>Loading latest game updates...</li>
           </ol>
-          <p class="panel-note">Shows the last 3 deployed updates.</p>
+          <button class="updates-toggle-button" id="updatesToggleButton" type="button">Show latest 6 deployments</button>
         </section>
 
         <section class="panel" id="leaderboardPanel">
           <h2>Leaderboard</h2>
-          <p class="panel-note">Shared online scores load when Firebase is available, with local scores as a fallback.</p>
           <ol id="leaderboardList" class="leaderboard-list"></ol>
           <div class="leaderboard-pager" aria-label="Leaderboard pages">
             <button id="leaderboardPrevButton" type="button">Previous</button>
@@ -102,6 +101,6 @@
 
   <p id="statusText" hidden>Press Space or tap to jump.</p>
   <button id="restartButton" type="button" hidden>Restart</button>
-  <script src="./game.js?v=20260519-8"></script>
+  <script src="./game.js?v=20260519-9"></script>
 </body>
 </html>

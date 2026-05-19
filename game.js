@@ -149,6 +149,7 @@ const coinValue = document.getElementById("coinValue");
 const areaValue = document.getElementById("areaValue");
 const perkValue = document.getElementById("perkValue");
 const updatesList = document.getElementById("updatesList");
+const updatesToggleButton = document.getElementById("updatesToggleButton");
 const leaderboardList = document.getElementById("leaderboardList");
 const leaderboardMode = document.getElementById("leaderboardMode");
 const leaderboardPrevButton = document.getElementById("leaderboardPrevButton");
@@ -180,7 +181,15 @@ const MAX_SIMULATION_STEPS = 4;
 const FRIDAY_EVENT_ACTIVE = new Date().getDay() === 5;
 const PERK_COSTS = { fly: 35, magnet: 8, blaster: 32 };
 const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
+const COLLAPSED_UPDATE_COUNT = 3;
+const EXPANDED_UPDATE_COUNT = 6;
 const GAME_UPDATES = [
+  {
+    dateTime: "2026-05-19T18:39:00+02:00",
+    displayTime: "May 19, 2026 at 18:39",
+    title: "Expandable Updates",
+    description: "Latest Updates now opens from 3 to 6 deployments, and the leaderboard intro text was removed.",
+  },
   {
     dateTime: "2026-05-19T18:12:00+02:00",
     displayTime: "May 19, 2026 at 18:12",
@@ -198,6 +207,18 @@ const GAME_UPDATES = [
     displayTime: "May 19, 2026 at 18:03",
     title: "Taller Game View",
     description: "The playfield is taller on desktop and mobile while horse, obstacle, and horizontal spacing stay the same.",
+  },
+  {
+    dateTime: "2026-05-19T17:59:00+02:00",
+    displayTime: "May 19, 2026 at 17:59",
+    title: "Smaller Perk Warning",
+    description: "Expiring perk warnings are now a compact badge, so they cover less of the gameplay.",
+  },
+  {
+    dateTime: "2026-05-19T17:53:00+02:00",
+    displayTime: "May 19, 2026 at 17:53",
+    title: "Restored Mobile Layout",
+    description: "Mobile gameplay is back to the cleaner layout with compact perks below the game and desktop perk alignment fixed.",
   },
 ];
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -292,6 +313,7 @@ let lastTickTime = null;
 let accumulatedTime = 0;
 let leaderboardPageIndex = 0;
 let leaderboardLoading = false;
+let visibleGameUpdateCount = COLLAPSED_UPDATE_COUNT;
 
 function ensureAudioReady() {
   if (!audioState.enabled || audioState.context) {
@@ -2108,7 +2130,7 @@ function renderGameUpdates() {
   }
 
   updatesList.innerHTML = "";
-  for (const update of GAME_UPDATES.slice(0, 3)) {
+  for (const update of GAME_UPDATES.slice(0, visibleGameUpdateCount)) {
     const item = document.createElement("li");
     const time = document.createElement("time");
     const title = document.createElement("strong");
@@ -2123,6 +2145,13 @@ function renderGameUpdates() {
     item.appendChild(title);
     item.appendChild(description);
     updatesList.appendChild(item);
+  }
+
+  if (updatesToggleButton) {
+    const expanded = visibleGameUpdateCount > COLLAPSED_UPDATE_COUNT;
+    updatesToggleButton.textContent = expanded ? "Show latest 3 deployments" : "Show latest 6 deployments";
+    updatesToggleButton.setAttribute("aria-expanded", `${expanded}`);
+    updatesToggleButton.hidden = GAME_UPDATES.length <= COLLAPSED_UPDATE_COUNT;
   }
 }
 
@@ -2316,6 +2345,15 @@ if (leaderboardPrevButton) {
 if (leaderboardNextButton) {
   leaderboardNextButton.addEventListener("click", () => {
     renderLeaderboard(leaderboardPageIndex + 1);
+  });
+}
+
+if (updatesToggleButton) {
+  updatesToggleButton.addEventListener("click", () => {
+    visibleGameUpdateCount = visibleGameUpdateCount > COLLAPSED_UPDATE_COUNT
+      ? COLLAPSED_UPDATE_COUNT
+      : EXPANDED_UPDATE_COUNT;
+    renderGameUpdates();
   });
 }
 

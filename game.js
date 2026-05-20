@@ -329,7 +329,7 @@ const GAME_UPDATES = [
 ];
 const DEFAULT_HORSE_X = 150;
 const BOSS_ARENA_MIN_X = 70;
-const BOSS_ARENA_MAX_X = 430;
+const BOSS_ARENA_MAX_X = WIDTH - 150;
 const BOSS_FIGHT_LIVES = 3;
 const BOSS_WEAPON_DURATION = 8 * 60;
 const BOSS_WEAPON_TYPES = [
@@ -580,6 +580,7 @@ function setSetting(name, value) {
       state.flyingEnemies = [];
       state.boss = null;
       state.bossAttacks = [];
+      clearBossFightPickups();
       state.bossWeapon = null;
       state.bossWeaponUntil = 0;
       state.bossLives = 0;
@@ -1217,6 +1218,10 @@ function isBossFightActive() {
   return Boolean(state.boss);
 }
 
+function clearBossFightPickups() {
+  state.pickups = state.pickups.filter((pickup) => !pickup.kind?.startsWith("boss"));
+}
+
 function hasUpcomingGroundThreat() {
   return state.obstacles.some((obstacle) => (
     obstacle.x > state.horse.x + 90 &&
@@ -1387,6 +1392,7 @@ function finishBossFight() {
   state.bossFightCount += 1;
   state.boss = null;
   state.bossAttacks = [];
+  clearBossFightPickups();
   state.bossLives = 0;
   state.bossHitGraceUntil = 0;
   state.bossPickupTimer = 180;
@@ -1415,6 +1421,9 @@ function damageBossFight(x, y) {
 
   if (state.bossLives <= 0) {
     state.gameOver = true;
+    clearBossFightPickups();
+    state.bossWeapon = null;
+    state.bossWeaponUntil = 0;
     state.status = `Boss fight lost. Final score: ${state.score}`;
     stopAreaMusic();
     return true;

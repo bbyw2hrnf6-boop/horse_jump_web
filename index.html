@@ -6,12 +6,12 @@
   <meta name="description" content="Horse Jump Web is a browser endless runner with perks, coins, carrots, and online leaderboard support.">
   <meta name="theme-color" content="#dbefff">
   <title>Horse Jump Web</title>
-  <link rel="stylesheet" href="./styles.css?v=20260520-3">
+  <link rel="stylesheet" href="./styles.css?v=20260520-4">
 </head>
 <body>
   <div class="app-shell">
     <main class="layout">
-      <section class="game-panel">
+      <section class="game-panel" id="gamePanel">
         <header class="game-header">
           <p class="game-header-kicker">Endless Runner</p>
           <h1>Horse Jump Web</h1>
@@ -28,8 +28,8 @@
           </div>
         </div>
 
-        <div class="game-stage">
-          <div class="playfield">
+        <div class="game-stage" id="gameStage">
+          <div class="playfield" id="playfield">
             <canvas id="gameCanvas" width="960" height="640" aria-label="Horse Jump endless runner game" role="img">
               Horse Jump Web needs a browser with canvas support.
             </canvas>
@@ -152,6 +152,6 @@
   </div>
 
   <button id="restartButton" type="button" hidden>Restart</button>
-  <script src="./game.js?v=20260520-2"></script>
+  <script src="./game.js?v=20260520-4"></script>
 </body>
 </html>

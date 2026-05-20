@@ -811,6 +811,11 @@ input:focus-visible {
     padding: 6px;
   }
 
+  html,
+  body {
+    scroll-behavior: smooth;
+  }
+
   .layout {
     display: flex;
     flex-direction: column;
@@ -841,6 +846,7 @@ input:focus-visible {
     width: min(100%, calc((100dvh - 180px) * 1.5));
     max-width: 100%;
     margin: 0 auto;
+    scroll-margin-top: 8px;
   }
 
   canvas {

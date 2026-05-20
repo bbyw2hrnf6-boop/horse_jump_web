@@ -168,6 +168,9 @@ const introOverlay = document.getElementById("introOverlay");
 const pauseOverlay = document.getElementById("pauseOverlay");
 const startGameButton = document.getElementById("startGameButton");
 const resumeGameButton = document.getElementById("resumeGameButton");
+const gamePanel = document.getElementById("gamePanel");
+const gameStage = document.getElementById("gameStage");
+const playfield = document.getElementById("playfield");
 const perkButtons = [...document.querySelectorAll(".perk-button")];
 
 const leaderboard = new LeaderboardService();
@@ -190,6 +193,12 @@ const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
 const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
 const GAME_UPDATES = [
+  {
+    dateTime: "2026-05-20T15:08:00+02:00",
+    displayTime: "May 20, 2026 at 15:08",
+    title: "Landscape Mobile Focus",
+    description: "Phone landscape now scrolls toward the playfield and keeps the gameplay centered before sidebar content.",
+  },
   {
     dateTime: "2026-05-20T14:16:00+02:00",
     displayTime: "May 20, 2026 at 14:16",
@@ -258,6 +267,7 @@ const GAME_UPDATES = [
   },
 ];
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+const mobileLandscapeQuery = window.matchMedia("(max-width: 980px) and (orientation: landscape)");
 
 const audioState = {
   enabled: Boolean(AudioContextClass),
@@ -357,6 +367,44 @@ let accumulatedTime = 0;
 let leaderboardPageIndex = 0;
 let leaderboardLoading = false;
 let visibleGameUpdateCount = COLLAPSED_UPDATE_COUNT;
+let gameplayFocusTimer = null;
+
+function isMobileLandscapeLayout() {
+  return mobileLandscapeQuery.matches;
+}
+
+function focusGameplayArea(immediate = false) {
+  if (!isMobileLandscapeLayout()) {
+    return;
+  }
+
+  const target = introOverlay && !introOverlay.hidden
+    ? introOverlay
+    : (playfield || gameStage || gamePanel);
+
+  if (!target) {
+    return;
+  }
+
+  if (gameplayFocusTimer) {
+    window.clearTimeout(gameplayFocusTimer);
+    gameplayFocusTimer = null;
+  }
+
+  const scrollAction = () => {
+    const panelTop = (gamePanel || target).getBoundingClientRect().top + window.scrollY;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+    const targetHeight = target.getBoundingClientRect().height || 0;
+    const idealTop = Math.max(0, panelTop - Math.max(6, (viewportHeight - targetHeight) * 0.22));
+    window.scrollTo({ top: idealTop, behavior: immediate ? "auto" : "smooth" });
+  };
+
+  if (immediate) {
+    scrollAction();
+  } else {
+    gameplayFocusTimer = window.setTimeout(scrollAction, 120);
+  }
+}
 
 function ensureAudioReady() {
   if (!audioState.enabled || audioState.context) {
@@ -672,6 +720,7 @@ function startRun() {
     startAreaMusic(getDesiredMusic(), true);
     audioState.started = true;
   }
+  focusGameplayArea();
 }
 
 function togglePause(forcePaused = null) {
@@ -2170,10 +2219,16 @@ function syncHud() {
   if (introOverlay && hudCache.introHidden !== introHidden) {
     introOverlay.hidden = introHidden;
     hudCache.introHidden = introHidden;
+    if (!introHidden) {
+      focusGameplayArea();
+    }
   }
   if (pauseOverlay && hudCache.pauseHidden !== pauseHidden) {
     pauseOverlay.hidden = pauseHidden;
     hudCache.pauseHidden = pauseHidden;
+    if (!pauseHidden) {
+      focusGameplayArea();
+    }
   }
   if (hudCache.submitText !== submitText) {
     scoreSubmitButton.textContent = submitText;
@@ -2610,7 +2665,26 @@ if (overlayRestartButton) {
   });
 }
 
+window.addEventListener("load", () => {
+  focusGameplayArea(true);
+});
+
+window.addEventListener("resize", () => {
+  focusGameplayArea();
+});
+
+if (typeof mobileLandscapeQuery.addEventListener === "function") {
+  mobileLandscapeQuery.addEventListener("change", () => {
+    focusGameplayArea();
+  });
+} else if (typeof mobileLandscapeQuery.addListener === "function") {
+  mobileLandscapeQuery.addListener(() => {
+    focusGameplayArea();
+  });
+}
+
 renderGameUpdates();
 renderLeaderboard();
 syncHud();
+focusGameplayArea(true);
 tick();

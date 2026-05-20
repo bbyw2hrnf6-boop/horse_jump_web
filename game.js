@@ -186,6 +186,24 @@ const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
 const GAME_UPDATES = [
   {
+    dateTime: "2026-05-20T11:42:00+02:00",
+    displayTime: "May 20, 2026 at 11:42",
+    title: "Live Status Bar",
+    description: "The game now shows a real in-game status bar with the Horse Jump Web title and live gameplay messages.",
+  },
+  {
+    dateTime: "2026-05-20T11:30:00+02:00",
+    displayTime: "May 20, 2026 at 11:30",
+    title: "Game Headline Added",
+    description: "A proper Horse Jump Web headline and subtitle now sit above the playfield for a clearer game identity.",
+  },
+  {
+    dateTime: "2026-05-20T11:18:00+02:00",
+    displayTime: "May 20, 2026 at 11:18",
+    title: "Rotten Apple Risk Fix",
+    description: "Rotten apples still boost speed, but they no longer protect you from dying like red apples do.",
+  },
+  {
     dateTime: "2026-05-19T18:39:00+02:00",
     displayTime: "May 19, 2026 at 18:39",
     title: "Expandable Updates",

@@ -207,6 +207,12 @@ const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
 const GAME_UPDATES = [
   {
+    dateTime: "2026-05-20T20:33:00+02:00",
+    displayTime: "May 20, 2026 at 20:33",
+    title: "Bigger Boss Arena",
+    description: "Boss fights now zoom out, bosses have more HP, and the mobile intro is much smaller.",
+  },
+  {
     dateTime: "2026-05-20T18:05:00+02:00",
     displayTime: "May 20, 2026 at 18:05",
     title: "Moving Bosses And Weapon Pickups",
@@ -341,7 +347,7 @@ const BOSS_TYPES = [
   {
     type: "dinosaur",
     label: "Dinosaur",
-    hp: 58,
+    hp: 96,
     width: 188,
     height: 116,
     y: 122,
@@ -350,7 +356,7 @@ const BOSS_TYPES = [
   {
     type: "crab",
     label: "Crab",
-    hp: 72,
+    hp: 118,
     width: 178,
     height: 102,
     y: 152,
@@ -359,7 +365,7 @@ const BOSS_TYPES = [
   {
     type: "biber",
     label: "Biber",
-    hp: 86,
+    hp: 140,
     width: 184,
     height: 108,
     y: 138,
@@ -3802,10 +3808,33 @@ function drawGroundTexture(theme) {
   ctx.stroke();
 }
 
+function beginBossArenaView(theme) {
+  if (!state.boss) {
+    return false;
+  }
+
+  const zoom = 0.78;
+  const focusY = HEIGHT * 0.56;
+  const backdrop = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+  backdrop.addColorStop(0, theme.sky);
+  backdrop.addColorStop(0.64, theme.skyBottom);
+  backdrop.addColorStop(0.65, theme.ground);
+  backdrop.addColorStop(1, theme.ground3);
+  ctx.fillStyle = backdrop;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  ctx.save();
+  ctx.translate(WIDTH / 2, focusY);
+  ctx.scale(zoom, zoom);
+  ctx.translate(-WIDTH / 2, -focusY);
+  return true;
+}
+
 function drawScene() {
   const theme = getAreaTheme();
   const perkCountdown = getPerkCountdownState();
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
+  const bossArenaZoomed = beginBossArenaView(theme);
 
   drawRollingHills(theme);
 
@@ -3833,6 +3862,9 @@ function drawScene() {
   for (const projectile of state.projectiles) drawProjectile(projectile);
   for (const burst of state.celebrationBursts) drawCelebrationBurst(burst);
   drawHorse();
+  if (bossArenaZoomed) {
+    ctx.restore();
+  }
   drawBossFightHud();
 
   if (FRIDAY_EVENT_ACTIVE) {

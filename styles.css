@@ -233,6 +233,11 @@ body.dark-mode .settings-gear {
   line-height: 1.45;
 }
 
+.mobile-intro-copy {
+  display: none;
+  color: var(--muted);
+}
+
 .dialog-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -877,9 +882,26 @@ input:focus-visible {
   }
 
   .playfield-dialog {
-    padding: 16px;
-    border-width: 3px;
-    border-radius: 16px;
+    width: min(230px, calc(100vw - 24px));
+    padding: 7px 8px;
+    border-width: 2px;
+    border-radius: 10px;
+  }
+
+  .intro-overlay .playfield-dialog {
+    width: min(190px, calc(100vw - 24px));
+  }
+
+  .intro-overlay .dialog-kicker,
+  .intro-overlay .dialog-copy,
+  .intro-overlay .dialog-grid {
+    display: none;
+  }
+
+  .intro-overlay .mobile-intro-copy {
+    display: block;
+    font-size: 0.62rem;
+    line-height: 1.15;
   }
 
   .game-over-dialog {
@@ -890,7 +912,22 @@ input:focus-visible {
 
   .playfield-dialog h2,
   .game-over-dialog h2 {
-    font-size: 1.65rem;
+    font-size: 0.95rem;
+  }
+
+  .intro-overlay .playfield-dialog h2 {
+    margin-bottom: 3px;
+    font-size: 0.78rem;
+    line-height: 1;
+  }
+
+  .intro-overlay .playfield-dialog-actions {
+    margin-top: 5px;
+  }
+
+  .intro-overlay .playfield-dialog-actions button {
+    padding: 5px 8px;
+    font-size: 0.62rem;
   }
 }
 
@@ -993,12 +1030,16 @@ input:focus-visible {
   }
 
   .playfield-dialog {
-    width: min(180px, calc(100vw - 12px));
+    width: min(150px, calc(100vw - 12px));
     max-height: calc(100dvh - 8px);
-    padding: 7px;
+    padding: 5px 6px;
     overflow: auto;
     border-width: 1px;
-    border-radius: 9px;
+    border-radius: 7px;
+  }
+
+  .intro-overlay .playfield-dialog {
+    width: min(128px, calc(100vw - 12px));
   }
 
   .game-over-dialog {
@@ -1012,8 +1053,13 @@ input:focus-visible {
 
   .playfield-dialog h2,
   .game-over-dialog h2 {
-    font-size: 0.82rem;
+    font-size: 0.68rem;
     line-height: 1.08;
+  }
+
+  .intro-overlay .playfield-dialog h2 {
+    margin-bottom: 2px;
+    font-size: 0.58rem;
   }
 
   .dialog-kicker {
@@ -1024,9 +1070,15 @@ input:focus-visible {
     display: none;
   }
 
-  .dialog-grid {
+  .intro-overlay .mobile-intro-copy {
     display: block;
-    margin-top: 4px;
+    font-size: 0.48rem;
+    line-height: 1.08;
+  }
+
+  .dialog-grid {
+    display: none;
+    margin-top: 0;
   }
 
   .dialog-grid div {
@@ -1051,12 +1103,12 @@ input:focus-visible {
 
   .playfield-dialog-actions {
     justify-content: start;
-    margin-top: 5px;
+    margin-top: 3px;
   }
 
   .playfield-dialog-actions button {
-    padding: 5px 8px;
-    font-size: 0.62rem;
+    padding: 3px 6px;
+    font-size: 0.5rem;
   }
 
   .settings-gear {

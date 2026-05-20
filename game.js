@@ -207,6 +207,12 @@ const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
 const GAME_UPDATES = [
   {
+    dateTime: "2026-05-20T17:42:00+02:00",
+    displayTime: "May 20, 2026 at 17:42",
+    title: "Hardcore Boss Arenas",
+    description: "Hardcore bosses now freeze the runner, give 3 boss-fight hearts, unlock auto carrot blaster, and cycle through Dinosaur, Crab, and Biber fights.",
+  },
+  {
     dateTime: "2026-05-20T17:18:00+02:00",
     displayTime: "May 20, 2026 at 17:18",
     title: "Distinct Seasons And 3D Obstacles",
@@ -315,6 +321,39 @@ const GAME_UPDATES = [
     description: "Mobile gameplay is back to the cleaner layout with compact perks below the game and desktop perk alignment fixed.",
   },
 ];
+const DEFAULT_HORSE_X = 150;
+const BOSS_ARENA_MIN_X = 70;
+const BOSS_ARENA_MAX_X = 430;
+const BOSS_FIGHT_LIVES = 3;
+const BOSS_TYPES = [
+  {
+    type: "dinosaur",
+    label: "Dinosaur",
+    hp: 32,
+    width: 188,
+    height: 116,
+    y: 122,
+    palette: ["#6fb34a", "#2f6f31", "#173d1f"],
+  },
+  {
+    type: "crab",
+    label: "Crab",
+    hp: 38,
+    width: 178,
+    height: 102,
+    y: 152,
+    palette: ["#df513f", "#8f241e", "#40110e"],
+  },
+  {
+    type: "biber",
+    label: "Biber",
+    hp: 44,
+    width: 184,
+    height: 108,
+    y: 138,
+    palette: ["#8c5a34", "#4f2f1a", "#25150c"],
+  },
+];
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 const mobileLandscapeQuery = window.matchMedia("(max-width: 980px) and (orientation: landscape)");
 
@@ -352,8 +391,9 @@ const state = {
   paused: false,
   status: "Open the intro and start your run.",
   worldSpeed: 7,
+  scrollDistance: 0,
   horse: {
-    x: 150,
+    x: DEFAULT_HORSE_X,
     y: GROUND_Y,
     vy: 0,
     width: 118,
@@ -373,7 +413,12 @@ const state = {
   obstacles: [],
   flyingEnemies: [],
   boss: null,
+  bossFightCount: 0,
+  bossLives: 0,
+  bossHitGraceUntil: 0,
+  bossAttacks: [],
   bossTimer: 1250,
+  bossAttackTimer: 90,
   flyingTimer: 260,
   coinsInWorld: [],
   pickups: [],
@@ -399,6 +444,10 @@ const state = {
     { x: 690, y: GROUND_Y - 132, size: 1.1, speed: 0.5, phase: 2.5 },
     { x: 910, y: GROUND_Y - 108, size: 0.85, speed: 0.62, phase: 3.1 },
   ],
+  input: {
+    left: false,
+    right: false,
+  },
 };
 
 const hudCache = {
@@ -515,6 +564,8 @@ function setSetting(name, value) {
     if (!value) {
       state.flyingEnemies = [];
       state.boss = null;
+      state.bossAttacks = [];
+      state.bossLives = 0;
     }
   }
 }
@@ -803,6 +854,7 @@ function resetGame() {
     ? "Friday special active: find meat to become a bull."
     : (appSettings.hardcore ? "Hardcore run ready. Watch for flying enemies and bosses." : "Press Space or tap to jump.");
   state.worldSpeed = 7.45;
+  state.scrollDistance = 0;
   state.flyUntil = 0;
   state.magnetUntil = 0;
   state.blasterUntil = 0;
@@ -815,7 +867,12 @@ function resetGame() {
   state.obstacles = [];
   state.flyingEnemies = [];
   state.boss = null;
+  state.bossFightCount = 0;
+  state.bossLives = 0;
+  state.bossHitGraceUntil = 0;
+  state.bossAttacks = [];
   state.bossTimer = 1250;
+  state.bossAttackTimer = 90;
   state.flyingTimer = 260;
   state.coinsInWorld = [];
   state.pickups = [];
@@ -826,11 +883,14 @@ function resetGame() {
   state.pickupTimer = 950;
   state.meatTimer = 760;
   Object.assign(state.horse, {
+    x: DEFAULT_HORSE_X,
     y: GROUND_Y,
     vy: 0,
     jumpsLeft: 2,
     onGround: true,
   });
+  state.input.left = false;
+  state.input.right = false;
   playerNameInput.value = "";
   if (state.hasStarted) {
     if (audioState.unlocked) {
@@ -1009,6 +1069,7 @@ function getAreaTheme() {
 }
 
 function getActivePerk() {
+  if (state.boss) return `Boss ${state.bossLives}/${BOSS_FIGHT_LIVES}`;
   if (state.bullUntil > state.frame) return `Friday Bull ${Math.ceil((state.bullUntil - state.frame) / 60)}s`;
   if (state.rottenBoostUntil > state.frame) return `Turbo Apple ${Math.ceil((state.rottenBoostUntil - state.frame) / 60)}s`;
   if (state.powerModeUntil > state.frame) return `Apple Power ${Math.ceil((state.powerModeUntil - state.frame) / 60)}s`;
@@ -1129,7 +1190,31 @@ function buildObstacle(type, x) {
   };
 }
 
+function isBossFightActive() {
+  return Boolean(state.boss);
+}
+
+function hasUpcomingGroundThreat() {
+  return state.obstacles.some((obstacle) => (
+    obstacle.x > state.horse.x + 90 &&
+    obstacle.x < WIDTH + 330
+  ));
+}
+
+function hasUpcomingFlyingThreat() {
+  return state.flyingEnemies.some((enemy) => (
+    enemy.x > state.horse.x + 110 &&
+    enemy.x < WIDTH + 220
+  ));
+}
+
 function spawnObstacle() {
+  if (isBossFightActive()) {
+    return false;
+  }
+  if (appSettings.hardcore && hasUpcomingFlyingThreat()) {
+    return false;
+  }
   const difficulty = Math.min(8, Math.floor(state.score / 1200));
   const types = ["hay", "crate", "barrel", "bush", "fence", "log", "hurdle", "mailbox", "farmer", "tractor", "spike", "sheep", "scarecrow", "rooster", "wagon", "windmill", "cow"];
   const availableTypes = types.slice(0, Math.min(types.length, 7 + difficulty));
@@ -1139,38 +1224,148 @@ function spawnObstacle() {
     ? "cow"
     : availableTypes[Math.floor(Math.random() * availableTypes.length)];
   state.obstacles.push(buildObstacle(type, WIDTH + 120 + Math.random() * 80));
+  if (appSettings.hardcore) {
+    state.flyingTimer = Math.max(state.flyingTimer, 120);
+  }
   if (Math.random() < 0.28) {
     playSpawnSound();
   }
+  return true;
 }
 
 function spawnFlyingEnemy() {
+  if (isBossFightActive() || hasUpcomingGroundThreat()) {
+    return false;
+  }
   state.flyingEnemies.push({
     x: WIDTH + 90,
-    y: 118 + Math.random() * Math.max(80, GROUND_Y - 270),
+    y: 104 + Math.random() * Math.max(70, GROUND_Y - 300),
     width: 62,
     height: 38,
     phase: Math.random() * Math.PI * 2,
     passed: false,
   });
+  state.spawnTimer = Math.max(state.spawnTimer, 115);
+  return true;
 }
 
 function spawnBoss() {
   if (state.boss) {
     return;
   }
+  const bossType = BOSS_TYPES[state.bossFightCount % BOSS_TYPES.length];
+  state.obstacles = [];
+  state.flyingEnemies = [];
+  state.coinsInWorld = [];
+  state.pickups = [];
+  state.projectiles = [];
+  state.bossAttacks = [];
+  state.bossLives = BOSS_FIGHT_LIVES;
+  state.bossHitGraceUntil = state.frame + 90;
+  state.bossAttackTimer = 95;
+  state.horse.x = DEFAULT_HORSE_X;
+  state.horse.vy = Math.min(state.horse.vy, 0);
   state.boss = {
     x: WIDTH + 80,
-    y: 124,
-    width: 154,
-    height: 96,
-    hp: 12,
-    maxHp: 12,
+    y: bossType.y,
+    width: bossType.width,
+    height: bossType.height,
+    hp: bossType.hp,
+    maxHp: bossType.hp,
+    type: bossType.type,
+    label: bossType.label,
+    palette: bossType.palette,
     phase: Math.random() * Math.PI * 2,
   };
-  state.status = "Hardcore boss incoming. Use Carrot Blaster to break it.";
+  state.status = `${bossType.label} boss fight. 3 hearts, unlimited carrot blaster, move with A/D or arrows.`;
   spawnCelebrationBurst(WIDTH - 140, 110, ["#ff7043", "#ffd54f", "#66d2a7"]);
   playSpawnSound();
+}
+
+function spawnBossAttack() {
+  if (!state.boss) {
+    return;
+  }
+  const boss = state.boss;
+  const originX = boss.x + boss.width * 0.18;
+  const originY = boss.y + boss.height * 0.55 + Math.sin(boss.phase) * 12;
+  const targetY = state.horse.y - 58 + (Math.random() - 0.5) * 60;
+  const baseAttack = {
+    x: originX,
+    y: originY,
+    vx: -7.2 - Math.min(2.4, state.bossFightCount * 0.35),
+    vy: Math.max(-2.2, Math.min(2.2, (targetY - originY) / 55)),
+    phase: Math.random() * Math.PI * 2,
+    type: "fireball",
+    size: 18,
+    width: 36,
+    height: 28,
+  };
+
+  if (boss.type === "crab") {
+    Object.assign(baseAttack, {
+      type: "bubble",
+      size: 16,
+      width: 32,
+      height: 32,
+      vy: Math.max(-1.8, Math.min(1.8, (targetY - originY) / 65)),
+    });
+  } else if (boss.type === "biber") {
+    Object.assign(baseAttack, {
+      type: "log",
+      y: GROUND_Y - 28,
+      size: 18,
+      width: 54,
+      height: 24,
+      vy: 0,
+    });
+  }
+
+  state.bossAttacks.push(baseAttack);
+}
+
+function finishBossFight() {
+  if (!state.boss) {
+    return;
+  }
+  const boss = state.boss;
+  spawnCelebrationBurst(boss.x + boss.width / 2, boss.y + boss.height / 2, ["#ff7043", "#ffd54f", "#ffffff", "#66d2a7"]);
+  state.score += 700 + state.bossFightCount * 120;
+  state.bossFightCount += 1;
+  state.boss = null;
+  state.bossAttacks = [];
+  state.bossLives = 0;
+  state.bossHitGraceUntil = 0;
+  state.horse.x = DEFAULT_HORSE_X;
+  state.spawnTimer = 105;
+  state.flyingTimer = 300;
+  state.bossTimer = 2400 + Math.random() * 900;
+  state.status = "Boss defeated. The run continues.";
+  playSmashSound();
+}
+
+function damageBossFight(x, y) {
+  if (!state.boss || state.bossHitGraceUntil > state.frame) {
+    return false;
+  }
+  if (state.invisibleUntil > state.frame || state.invisibilityGraceUntil > state.frame) {
+    return false;
+  }
+
+  state.bossLives -= 1;
+  state.bossHitGraceUntil = state.frame + 90;
+  spawnCelebrationBurst(x, y, ["#ef5350", "#ffca28", "#ffffff"]);
+  playCrashSound();
+
+  if (state.bossLives <= 0) {
+    state.gameOver = true;
+    state.status = `Boss fight lost. Final score: ${state.score}`;
+    stopAreaMusic();
+    return true;
+  }
+
+  state.status = `Boss hit you. ${state.bossLives} heart${state.bossLives === 1 ? "" : "s"} left.`;
+  return true;
 }
 
 function spawnCoins() {
@@ -1257,6 +1452,17 @@ function activateBullPower() {
 
 function updateHorse() {
   const horse = state.horse;
+  if (isBossFightActive()) {
+    const horizontalSpeed = 8.5;
+    if (state.input.left) horse.x -= horizontalSpeed;
+    if (state.input.right) horse.x += horizontalSpeed;
+    horse.x = Math.max(BOSS_ARENA_MIN_X, Math.min(BOSS_ARENA_MAX_X, horse.x));
+  } else if (Math.abs(horse.x - DEFAULT_HORSE_X) > 0.5) {
+    horse.x += (DEFAULT_HORSE_X - horse.x) * 0.12;
+  } else {
+    horse.x = DEFAULT_HORSE_X;
+  }
+
   if (state.flyUntil > state.frame) {
     horse.vy += 0.55;
     horse.vy = Math.max(-11.5, Math.min(7.5, horse.vy));
@@ -1283,28 +1489,35 @@ function updateWorld() {
     spawnCelebrationBurst(WIDTH * 0.5, 84, ["#ffd54f", "#f06292", "#4fc3f7", "#ffffff"]);
   }
   const baseWorldSpeed = 7.45 + Math.min(8, Math.floor(state.score / 2500)) * 0.5 + (appSettings.hardcore ? 0.65 : 0);
-  state.worldSpeed = baseWorldSpeed
-    + (state.rottenBoostUntil > state.frame ? 3.2 : 0)
-    + (state.bullUntil > state.frame ? 4.4 : 0);
-  state.score += 1;
+  state.worldSpeed = isBossFightActive()
+    ? 0
+    : baseWorldSpeed
+      + (state.rottenBoostUntil > state.frame ? 3.2 : 0)
+      + (state.bullUntil > state.frame ? 4.4 : 0);
+  state.scrollDistance += state.worldSpeed;
+  if (!isBossFightActive()) {
+    state.score += 1;
+  }
   const desiredMusic = getDesiredMusic();
   if (desiredMusic !== audioState.currentArea || state.area !== previousArea) {
     startAreaMusic(desiredMusic, true);
   }
 
-  state.spawnTimer -= 1;
-  if (state.spawnTimer <= 0) {
-    spawnObstacle();
-    state.spawnTimer = appSettings.hardcore
-      ? 58 + Math.random() * 50
-      : 55 + Math.random() * 45;
+  if (!isBossFightActive()) {
+    state.spawnTimer -= 1;
+    if (state.spawnTimer <= 0) {
+      const spawned = spawnObstacle();
+      state.spawnTimer = spawned
+        ? (appSettings.hardcore ? 70 + Math.random() * 62 : 55 + Math.random() * 45)
+        : 42;
+    }
   }
 
-  if (appSettings.hardcore) {
+  if (appSettings.hardcore && !isBossFightActive()) {
     state.flyingTimer -= 1;
     if (state.flyingTimer <= 0) {
-      spawnFlyingEnemy();
-      state.flyingTimer = 250 + Math.random() * 170;
+      const spawned = spawnFlyingEnemy();
+      state.flyingTimer = spawned ? 320 + Math.random() * 210 : 85;
     }
 
     state.bossTimer -= 1;
@@ -1314,35 +1527,41 @@ function updateWorld() {
     }
   }
 
-  state.coinTimer -= 1;
-  if (state.coinTimer <= 0) {
-    spawnCoins();
-    state.coinTimer = 110 + Math.random() * 70;
-  }
+  if (!isBossFightActive()) {
+    state.coinTimer -= 1;
+    if (state.coinTimer <= 0) {
+      spawnCoins();
+      state.coinTimer = 110 + Math.random() * 70;
+    }
 
-  state.pickupTimer -= 1;
-  if (state.pickupTimer <= 0) {
-    spawnApple();
-    state.pickupTimer = 900 + Math.random() * 600;
-  }
+    state.pickupTimer -= 1;
+    if (state.pickupTimer <= 0) {
+      spawnApple();
+      state.pickupTimer = 900 + Math.random() * 600;
+    }
 
-  if (FRIDAY_EVENT_ACTIVE) {
-    state.meatTimer -= 1;
-    if (state.meatTimer <= 0) {
-      spawnMeat();
-      state.meatTimer = 1150 + Math.random() * 650;
+    if (FRIDAY_EVENT_ACTIVE) {
+      state.meatTimer -= 1;
+      if (state.meatTimer <= 0) {
+        spawnMeat();
+        state.meatTimer = 1150 + Math.random() * 650;
+      }
     }
   }
 
   for (const cloud of state.clouds) {
-    cloud.x -= cloud.speed;
+    if (!isBossFightActive()) {
+      cloud.x -= cloud.speed;
+    }
     if (cloud.x < -120) {
       cloud.x = WIDTH + 60;
     }
   }
 
   for (const bird of state.birds) {
-    bird.x -= bird.speed;
+    if (!isBossFightActive()) {
+      bird.x -= bird.speed;
+    }
     bird.flap += 0.18;
     if (bird.x < -80) {
       bird.x = WIDTH + 40 + Math.random() * 120;
@@ -1351,7 +1570,9 @@ function updateWorld() {
   }
 
   for (const floater of state.meadowFloaters) {
-    floater.x -= floater.speed;
+    if (!isBossFightActive()) {
+      floater.x -= floater.speed;
+    }
     floater.phase += 0.08;
     if (floater.x < -30) {
       floater.x = WIDTH + 30 + Math.random() * 100;
@@ -1359,31 +1580,63 @@ function updateWorld() {
     }
   }
 
-  for (const obstacle of state.obstacles) {
-    obstacle.x -= state.worldSpeed;
-    if (!obstacle.passed && obstacle.x + obstacle.width < state.horse.x) {
-      obstacle.passed = true;
-      state.score += 24;
+  if (!isBossFightActive()) {
+    for (const obstacle of state.obstacles) {
+      obstacle.x -= state.worldSpeed;
+      if (!obstacle.passed && obstacle.x + obstacle.width < state.horse.x) {
+        obstacle.passed = true;
+        state.score += 24;
+      }
     }
+    state.obstacles = state.obstacles.filter((item) => item.x + item.width > -30);
+  } else {
+    state.obstacles = [];
   }
-  state.obstacles = state.obstacles.filter((item) => item.x + item.width > -30);
 
-  for (const enemy of state.flyingEnemies) {
-    enemy.phase += 0.12;
-    enemy.x -= state.worldSpeed + 2.4;
-    enemy.y += Math.sin(enemy.phase) * 2.1;
-    if (!enemy.passed && enemy.x + enemy.width < state.horse.x) {
-      enemy.passed = true;
-      state.score += 36;
+  if (!isBossFightActive()) {
+    for (const enemy of state.flyingEnemies) {
+      enemy.phase += 0.12;
+      enemy.x -= state.worldSpeed + 2.4;
+      enemy.y += Math.sin(enemy.phase) * 2.1;
+      if (!enemy.passed && enemy.x + enemy.width < state.horse.x) {
+        enemy.passed = true;
+        state.score += 36;
+      }
     }
+    state.flyingEnemies = state.flyingEnemies.filter((enemy) => enemy.x + enemy.width > -40);
+  } else {
+    state.flyingEnemies = [];
   }
-  state.flyingEnemies = state.flyingEnemies.filter((enemy) => enemy.x + enemy.width > -40);
 
   if (state.boss) {
     state.boss.phase += 0.08;
-    state.boss.x += Math.max(-4.4, (WIDTH - 230 - state.boss.x) * 0.05);
-    state.boss.y = 118 + Math.sin(state.boss.phase) * 28;
+    state.boss.x += Math.max(-4.8, (WIDTH - 260 - state.boss.x) * 0.05);
+    state.boss.y = state.boss.type === "crab"
+      ? 160 + Math.sin(state.boss.phase) * 14
+      : state.boss.type === "biber"
+        ? 138 + Math.sin(state.boss.phase) * 18
+        : 118 + Math.sin(state.boss.phase) * 24;
+    state.bossAttackTimer -= 1;
+    if (state.bossAttackTimer <= 0) {
+      spawnBossAttack();
+      const pressure = Math.min(20, state.bossFightCount * 3);
+      state.bossAttackTimer = Math.max(46, 82 - pressure + Math.random() * 38);
+    }
   }
+
+  for (const attack of state.bossAttacks) {
+    attack.phase += 0.18;
+    attack.x += attack.vx;
+    attack.y += attack.vy;
+    if (attack.type === "bubble") {
+      attack.y += Math.sin(attack.phase) * 1.3;
+    }
+  }
+  state.bossAttacks = state.bossAttacks.filter((attack) => (
+    attack.x + attack.width > -30 &&
+    attack.y > 20 &&
+    attack.y < HEIGHT + 40
+  ));
 
   for (const coin of state.coinsInWorld) {
     if (state.magnetUntil > state.frame) {
@@ -1417,16 +1670,22 @@ function updateWorld() {
   }
   state.celebrationBursts = state.celebrationBursts.filter((burst) => burst.life > 0);
 
-  if (state.blasterUntil > state.frame && state.frame >= state.nextShotFrame) {
+  if ((state.blasterUntil > state.frame || isBossFightActive()) && state.frame >= state.nextShotFrame) {
     const target = state.boss || state.flyingEnemies[0] || state.obstacles[0];
+    const shotX = state.horse.x + 170;
+    const shotY = state.horse.y - 90;
+    const targetX = target ? target.x + target.width / 2 : WIDTH;
+    const targetY = target ? target.y + target.height / 2 : shotY;
+    const distance = Math.max(1, Math.hypot(targetX - shotX, targetY - shotY));
+    const speed = state.boss ? 17.5 : 15;
     state.projectiles.push({
-      x: state.horse.x + 170,
-      y: state.horse.y - 90,
-      vx: target ? 15 : 15,
-      vy: target ? ((target.y + target.height / 2) - (state.horse.y - 90)) / 25 : 0,
+      x: shotX,
+      y: shotY,
+      vx: ((targetX - shotX) / distance) * speed,
+      vy: ((targetY - shotY) / distance) * speed,
       size: 7,
     });
-    state.nextShotFrame = state.frame + 10;
+    state.nextShotFrame = state.frame + (state.boss ? 11 : 10);
     playBlasterSound();
   }
 
@@ -1502,13 +1761,32 @@ function checkCollisions() {
         spawnCelebrationBurst(projectile.x, projectile.y, ["#ff7043", "#ffd54f", "#66d2a7"]);
         playSmashSound();
         if (state.boss.hp <= 0) {
-          spawnCelebrationBurst(state.boss.x + state.boss.width / 2, state.boss.y + state.boss.height / 2, ["#ff7043", "#ffd54f", "#ffffff", "#66d2a7"]);
-          state.boss = null;
-          state.score += 600;
-          state.status = "Boss defeated. Hardcore bonus earned.";
+          finishBossFight();
         }
         continue;
       }
+    }
+
+    let attackDestroyed = false;
+    for (const attack of [...state.bossAttacks]) {
+      const attackHit = (
+        projectile.x + projectile.size > attack.x &&
+        projectile.x - projectile.size < attack.x + attack.width &&
+        projectile.y + projectile.size > attack.y &&
+        projectile.y - projectile.size < attack.y + attack.height
+      );
+      if (attackHit) {
+        state.projectiles.splice(state.projectiles.indexOf(projectile), 1);
+        state.bossAttacks.splice(state.bossAttacks.indexOf(attack), 1);
+        spawnCelebrationBurst(attack.x + attack.width / 2, attack.y + attack.height / 2, ["#ffd54f", "#ffffff", "#66d2a7"]);
+        state.score += 18;
+        attackDestroyed = true;
+        break;
+      }
+    }
+
+    if (attackDestroyed || !state.projectiles.includes(projectile)) {
+      continue;
     }
 
     let projectileUsed = false;
@@ -1550,6 +1828,22 @@ function checkCollisions() {
     }
   }
 
+  for (const attack of [...state.bossAttacks]) {
+    const overlap = (
+      horseBox.left < attack.x + attack.width - 4 &&
+      horseBox.right > attack.x + 4 &&
+      horseBox.top < attack.y + attack.height - 2 &&
+      horseBox.bottom > attack.y + 2
+    );
+    if (overlap) {
+      state.bossAttacks.splice(state.bossAttacks.indexOf(attack), 1);
+      damageBossFight(attack.x + attack.width / 2, attack.y + attack.height / 2);
+      if (state.gameOver) {
+        return;
+      }
+    }
+  }
+
   for (const enemy of state.flyingEnemies) {
     const overlap = (
       horseBox.left < enemy.x + enemy.width - 4 &&
@@ -1577,10 +1871,7 @@ function checkCollisions() {
       horseBox.bottom > state.boss.y
     );
     if (bossOverlap && state.invisibleUntil <= state.frame && state.invisibilityGraceUntil <= state.frame) {
-      state.gameOver = true;
-      state.status = `Game over. Final score: ${state.score}`;
-      stopAreaMusic();
-      playCrashSound();
+      damageBossFight(state.horse.x + state.horse.width / 2, state.horse.y - state.horse.height / 2);
       return;
     }
   }
@@ -1682,39 +1973,152 @@ function drawBoss(boss) {
   ctx.beginPath();
   ctx.ellipse(boss.width * 0.48, boss.height + 8, boss.width * 0.42, 12, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = "#5f3145";
-  ctx.strokeStyle = "#251520";
+  ctx.strokeStyle = boss.palette?.[2] || "#251520";
   ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.roundRect(10, 20, boss.width - 28, boss.height - 32, 26);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = "#8d4260";
-  ctx.beginPath();
-  ctx.ellipse(48, 44, 18, 13, -0.2, 0, Math.PI * 2);
-  ctx.ellipse(88, 60, 22, 14, 0.18, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#ffd35c";
-  ctx.beginPath();
-  ctx.moveTo(boss.width - 26, 44);
-  ctx.lineTo(boss.width - 2, 54);
-  ctx.lineTo(boss.width - 26, 64);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = "#ffffff";
-  ctx.beginPath();
-  ctx.arc(boss.width - 48, 42, 5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#1b1018";
-  ctx.beginPath();
-  ctx.arc(boss.width - 46, 42, 2.3, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "#251520";
-  ctx.lineWidth = 5;
-  ctx.beginPath();
-  ctx.moveTo(14, 48);
-  ctx.quadraticCurveTo(-8, 32 + Math.sin(boss.phase) * 6, 8, 18);
-  ctx.stroke();
+
+  if (boss.type === "crab") {
+    ctx.fillStyle = boss.palette[0];
+    ctx.beginPath();
+    ctx.ellipse(boss.width * 0.48, 54, 54, 32, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#ff806d";
+    ctx.beginPath();
+    ctx.ellipse(boss.width * 0.34, 44, 18, 11, -0.4, 0, Math.PI * 2);
+    ctx.ellipse(boss.width * 0.62, 56, 20, 12, 0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = boss.palette[2];
+    ctx.lineWidth = 5;
+    for (const side of [-1, 1]) {
+      const baseX = boss.width * 0.48 + side * 46;
+      ctx.beginPath();
+      ctx.moveTo(baseX, 56);
+      ctx.quadraticCurveTo(baseX + side * 32, 30 + Math.sin(boss.phase) * 6, baseX + side * 54, 46);
+      ctx.stroke();
+      ctx.fillStyle = boss.palette[0];
+      ctx.beginPath();
+      ctx.moveTo(baseX + side * 54, 46);
+      ctx.quadraticCurveTo(baseX + side * 78, 26, baseX + side * 72, 62);
+      ctx.quadraticCurveTo(baseX + side * 58, 60, baseX + side * 54, 46);
+      ctx.fill();
+      ctx.stroke();
+      for (let leg = 0; leg < 3; leg += 1) {
+        ctx.beginPath();
+        ctx.moveTo(boss.width * 0.48 + side * (18 + leg * 15), 76);
+        ctx.lineTo(boss.width * 0.48 + side * (38 + leg * 18), 96);
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(boss.width * 0.38, 22, 8, 0, Math.PI * 2);
+    ctx.arc(boss.width * 0.56, 22, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#1b1018";
+    ctx.beginPath();
+    ctx.arc(boss.width * 0.4, 23, 3, 0, Math.PI * 2);
+    ctx.arc(boss.width * 0.58, 23, 3, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (boss.type === "biber") {
+    ctx.fillStyle = boss.palette[0];
+    ctx.beginPath();
+    ctx.roundRect(18, 26, boss.width - 52, boss.height - 36, 28);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#ad7645";
+    ctx.beginPath();
+    ctx.ellipse(62, 62, 28, 18, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#5a351f";
+    ctx.beginPath();
+    ctx.ellipse(12, 72, 24, 38, -0.75, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "#2d1a0f";
+    ctx.lineWidth = 2;
+    for (let line = -2; line <= 2; line += 1) {
+      ctx.beginPath();
+      ctx.moveTo(4 + line * 5, 52);
+      ctx.lineTo(20 + line * 5, 94);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#f0c49a";
+    ctx.beginPath();
+    ctx.roundRect(boss.width - 58, 45, 42, 34, 15);
+    ctx.fill();
+    ctx.strokeStyle = boss.palette[2];
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(boss.width - 38, 64, 9, 18);
+    ctx.fillRect(boss.width - 28, 64, 9, 18);
+    ctx.fillStyle = "#1b1018";
+    ctx.beginPath();
+    ctx.arc(boss.width - 46, 54, 3.6, 0, Math.PI * 2);
+    ctx.arc(boss.width - 28, 54, 3.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = boss.palette[2];
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(44, 96);
+    ctx.lineTo(30, boss.height + 4);
+    ctx.moveTo(96, 96);
+    ctx.lineTo(110, boss.height + 4);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = boss.palette?.[0] || "#6fb34a";
+    ctx.beginPath();
+    ctx.ellipse(78, 62, 68, 34, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#92d66b";
+    ctx.beginPath();
+    ctx.ellipse(76, 72, 44, 16, 0.08, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = boss.palette?.[2] || "#173d1f";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(20, 56);
+    ctx.quadraticCurveTo(-18, 28 + Math.sin(boss.phase) * 7, 14, 30);
+    ctx.stroke();
+    ctx.fillStyle = boss.palette?.[0] || "#6fb34a";
+    ctx.beginPath();
+    ctx.ellipse(boss.width - 44, 42, 36, 28, -0.05, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.moveTo(boss.width - 26, 55);
+    ctx.lineTo(boss.width - 8, 60);
+    ctx.lineTo(boss.width - 28, 66);
+    ctx.lineTo(boss.width - 20, 61);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#1b1018";
+    ctx.beginPath();
+    ctx.arc(boss.width - 50, 36, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#d6ef82";
+    for (let spike = 0; spike < 5; spike += 1) {
+      ctx.beginPath();
+      ctx.moveTo(36 + spike * 20, 28);
+      ctx.lineTo(48 + spike * 20, 4 + (spike % 2) * 8);
+      ctx.lineTo(60 + spike * 20, 30);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.strokeStyle = boss.palette?.[2] || "#173d1f";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(56, 90);
+    ctx.lineTo(46, boss.height + 4);
+    ctx.moveTo(112, 88);
+    ctx.lineTo(122, boss.height + 4);
+    ctx.stroke();
+  }
+
   const hpWidth = boss.width - 24;
   ctx.fillStyle = "rgba(0,0,0,0.28)";
   ctx.fillRect(12, 4, hpWidth, 8);
@@ -1723,6 +2127,86 @@ function drawBoss(boss) {
   ctx.strokeStyle = "#251520";
   ctx.lineWidth = 1.5;
   ctx.strokeRect(12, 4, hpWidth, 8);
+  ctx.restore();
+}
+
+function drawBossAttack(attack) {
+  ctx.save();
+  ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);
+  ctx.rotate(attack.type === "log" ? attack.phase * 1.2 : 0);
+  if (attack.type === "bubble") {
+    ctx.fillStyle = "rgba(123, 205, 255, 0.5)";
+    ctx.strokeStyle = "rgba(22, 88, 137, 0.75)";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, attack.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.78)";
+    ctx.beginPath();
+    ctx.arc(-6, -7, 4, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (attack.type === "log") {
+    ctx.fillStyle = "#7b5230";
+    ctx.strokeStyle = "#3e2514";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(-attack.width / 2, -attack.height / 2, attack.width, attack.height, 10);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "#c0905c";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-attack.width / 2 + 10, -4);
+    ctx.lineTo(attack.width / 2 - 8, -4);
+    ctx.moveTo(-attack.width / 2 + 10, 5);
+    ctx.lineTo(attack.width / 2 - 8, 5);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = "#ff7043";
+    ctx.strokeStyle = "#8f2619";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, attack.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255, 214, 79, 0.82)";
+    ctx.beginPath();
+    ctx.arc(-4, -5, attack.size * 0.45, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawBossFightHud() {
+  if (!state.boss) {
+    return;
+  }
+  ctx.save();
+  ctx.fillStyle = "rgba(255, 250, 238, 0.9)";
+  ctx.strokeStyle = "#6f4e37";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.roundRect(WIDTH / 2 - 190, 18, 380, 70, 18);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#31261f";
+  ctx.font = "bold 20px Trebuchet MS";
+  ctx.textAlign = "center";
+  ctx.fillText(`${state.boss.label} Boss Fight`, WIDTH / 2, 44);
+  ctx.font = "15px Trebuchet MS";
+  ctx.fillText("A/D or arrows to dodge. Auto carrot blaster is active.", WIDTH / 2, 68);
+  ctx.textAlign = "left";
+  for (let index = 0; index < BOSS_FIGHT_LIVES; index += 1) {
+    ctx.fillStyle = index < state.bossLives ? "#ef4444" : "rgba(90,70,58,0.22)";
+    ctx.beginPath();
+    const heartX = WIDTH / 2 + 120 + index * 26;
+    const heartY = 38;
+    ctx.moveTo(heartX, heartY + 8);
+    ctx.bezierCurveTo(heartX - 18, heartY - 6, heartX - 8, heartY - 20, heartX, heartY - 10);
+    ctx.bezierCurveTo(heartX + 8, heartY - 20, heartX + 18, heartY - 6, heartX, heartY + 8);
+    ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -2763,9 +3247,9 @@ function drawProjectile(projectile) {
 }
 
 function drawRollingHills(theme) {
-  const farShift = -(state.frame * state.worldSpeed * 0.035) % WIDTH;
-  const midShift = -(state.frame * state.worldSpeed * 0.07) % WIDTH;
-  const nearShift = -(state.frame * state.worldSpeed * 0.13) % WIDTH;
+  const farShift = -(state.scrollDistance * 0.035) % WIDTH;
+  const midShift = -(state.scrollDistance * 0.07) % WIDTH;
+  const nearShift = -(state.scrollDistance * 0.13) % WIDTH;
 
   const skyGlow = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
   skyGlow.addColorStop(0, theme.sky);
@@ -2924,7 +3408,7 @@ function drawRollingHills(theme) {
   }
 
   if (theme.season === "winter") {
-    const liftShift = -(state.frame * state.worldSpeed * 0.09) % 180;
+    const liftShift = -(state.scrollDistance * 0.09) % 180;
     ctx.strokeStyle = appSettings.darkMode ? "rgba(216, 242, 255, 0.42)" : "rgba(72, 103, 125, 0.46)";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -2943,7 +3427,7 @@ function drawRollingHills(theme) {
       ctx.fillRect(x - 14, y + 24, 28, 12);
     }
   } else if (theme.season === "summer") {
-    const barnShift = -(state.frame * state.worldSpeed * 0.11) % 360;
+    const barnShift = -(state.scrollDistance * 0.11) % 360;
     for (let x = barnShift - 360; x < WIDTH + 360; x += 360) {
       ctx.fillStyle = appSettings.darkMode ? "rgba(95, 52, 35, 0.62)" : "rgba(178, 73, 45, 0.58)";
       ctx.fillRect(x + 80, GROUND_Y - 98, 76, 48);
@@ -2957,7 +3441,7 @@ function drawRollingHills(theme) {
       ctx.fillRect(x + 112, GROUND_Y - 76, 15, 26);
     }
   } else if (theme.season === "autumn") {
-    const cabinShift = -(state.frame * state.worldSpeed * 0.1) % 420;
+    const cabinShift = -(state.scrollDistance * 0.1) % 420;
     for (let x = cabinShift - 420; x < WIDTH + 420; x += 420) {
       ctx.fillStyle = appSettings.darkMode ? "rgba(82, 45, 26, 0.62)" : "rgba(120, 69, 36, 0.55)";
       ctx.fillRect(x + 140, GROUND_Y - 88, 68, 42);
@@ -2976,7 +3460,7 @@ function drawSeasonAtmosphere(theme) {
   if (theme.season === "winter") {
     ctx.fillStyle = appSettings.darkMode ? "rgba(230, 246, 255, 0.72)" : "rgba(255, 255, 255, 0.9)";
     for (let index = 0; index < 42; index += 1) {
-      const x = (index * 83 - state.frame * state.worldSpeed * 0.32) % (WIDTH + 80);
+      const x = (index * 83 - state.scrollDistance * 0.32) % (WIDTH + 80);
       const y = 42 + ((index * 47 + state.frame * 0.65) % Math.max(160, GROUND_Y - 90));
       const size = 1.4 + (index % 4) * 0.5;
       ctx.beginPath();
@@ -2988,7 +3472,7 @@ function drawSeasonAtmosphere(theme) {
 
   if (theme.season === "spring") {
     for (let index = 0; index < 22; index += 1) {
-      const x = (index * 97 - state.frame * state.worldSpeed * 0.22) % (WIDTH + 100);
+      const x = (index * 97 - state.scrollDistance * 0.22) % (WIDTH + 100);
       const y = 84 + ((index * 53 + state.frame * 0.36) % Math.max(150, GROUND_Y - 130));
       ctx.fillStyle = index % 2 === 0 ? "rgba(255, 172, 205, 0.48)" : "rgba(255, 238, 245, 0.48)";
       ctx.save();
@@ -3004,7 +3488,7 @@ function drawSeasonAtmosphere(theme) {
 
   if (theme.season === "autumn") {
     for (let index = 0; index < 28; index += 1) {
-      const x = (index * 76 - state.frame * state.worldSpeed * 0.38) % (WIDTH + 90);
+      const x = (index * 76 - state.scrollDistance * 0.38) % (WIDTH + 90);
       const y = 72 + ((index * 37 + state.frame * 0.78) % Math.max(180, GROUND_Y - 100));
       ctx.fillStyle = index % 3 === 0 ? "rgba(209, 86, 36, 0.56)" : "rgba(231, 148, 54, 0.5)";
       ctx.save();
@@ -3042,7 +3526,7 @@ function drawGroundTexture(theme) {
   ctx.fillStyle = groundGradient;
   ctx.fillRect(0, GROUND_Y, WIDTH, HEIGHT - GROUND_Y);
 
-  const offset = -(state.frame * state.worldSpeed * 0.55) % 42;
+  const offset = -(state.scrollDistance * 0.55) % 42;
 
   if (theme.season === "winter") {
     ctx.fillStyle = appSettings.darkMode ? "rgba(229, 244, 255, 0.17)" : "rgba(255, 255, 255, 0.5)";
@@ -3056,7 +3540,7 @@ function drawGroundTexture(theme) {
     ctx.closePath();
     ctx.fill();
 
-    const skiOffset = -(state.frame * state.worldSpeed * 0.78) % 150;
+    const skiOffset = -(state.scrollDistance * 0.78) % 150;
     ctx.strokeStyle = appSettings.darkMode ? "rgba(184, 222, 241, 0.38)" : "rgba(93, 146, 174, 0.3)";
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -3087,7 +3571,7 @@ function drawGroundTexture(theme) {
     }
     ctx.stroke();
 
-    const flowerOffset = -(state.frame * state.worldSpeed * 0.72) % 84;
+    const flowerOffset = -(state.scrollDistance * 0.72) % 84;
     for (let x = flowerOffset - 84; x < WIDTH + 84; x += 84) {
       const y = GROUND_Y + 48 + ((Math.floor(x / 84) % 3) * 22);
       ctx.strokeStyle = "rgba(50, 116, 46, 0.5)";
@@ -3111,7 +3595,7 @@ function drawGroundTexture(theme) {
   }
 
   if (theme.season === "summer") {
-    const rowOffset = -(state.frame * state.worldSpeed * 0.62) % 56;
+    const rowOffset = -(state.scrollDistance * 0.62) % 56;
     ctx.strokeStyle = appSettings.darkMode ? "rgba(232, 184, 86, 0.2)" : "rgba(255, 227, 121, 0.42)";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -3130,7 +3614,7 @@ function drawGroundTexture(theme) {
   }
 
   if (theme.season === "autumn") {
-    const leafOffset = -(state.frame * state.worldSpeed * 0.68) % 76;
+    const leafOffset = -(state.scrollDistance * 0.68) % 76;
     ctx.strokeStyle = appSettings.darkMode ? "rgba(0,0,0,0.22)" : "rgba(88, 47, 24, 0.24)";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -3201,11 +3685,13 @@ function drawScene() {
   for (const obstacle of state.obstacles) drawObstacle(obstacle);
   for (const enemy of state.flyingEnemies) drawFlyingEnemy(enemy);
   if (state.boss) drawBoss(state.boss);
+  for (const attack of state.bossAttacks) drawBossAttack(attack);
   for (const pickup of state.pickups) drawPickup(pickup);
   for (const coin of state.coinsInWorld) drawCoin(coin);
   for (const projectile of state.projectiles) drawProjectile(projectile);
   for (const burst of state.celebrationBursts) drawCelebrationBurst(burst);
   drawHorse();
+  drawBossFightHud();
 
   if (FRIDAY_EVENT_ACTIVE) {
     ctx.save();
@@ -3641,6 +4127,14 @@ document.addEventListener("keydown", (event) => {
     togglePause();
     return;
   }
+  if (!state.awaitingScoreEntry && (event.code === "ArrowLeft" || event.code === "KeyA")) {
+    state.input.left = true;
+    if (isBossFightActive()) event.preventDefault();
+  }
+  if (!state.awaitingScoreEntry && (event.code === "ArrowRight" || event.code === "KeyD")) {
+    state.input.right = true;
+    if (isBossFightActive()) event.preventDefault();
+  }
   if (event.code === "Space") {
     event.preventDefault();
     if (!state.hasStarted) {
@@ -3671,6 +4165,26 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+document.addEventListener("keyup", (event) => {
+  if (event.code === "ArrowLeft" || event.code === "KeyA") {
+    state.input.left = false;
+  }
+  if (event.code === "ArrowRight" || event.code === "KeyD") {
+    state.input.right = false;
+  }
+});
+
+function updateTouchBossMovement(event) {
+  if (!isBossFightActive() || !event.touches?.length) {
+    return;
+  }
+  const rect = canvas.getBoundingClientRect();
+  const touchX = event.touches[0].clientX - rect.left;
+  const ratio = touchX / Math.max(1, rect.width);
+  state.input.left = ratio < 0.42;
+  state.input.right = ratio > 0.58;
+}
+
 canvas.addEventListener("pointerdown", (event) => {
   if (event.pointerType === "touch") {
     return;
@@ -3690,6 +4204,7 @@ canvas.addEventListener("pointerdown", (event) => {
 canvas.addEventListener("touchstart", (event) => {
   event.preventDefault();
   unlockAudio();
+  updateTouchBossMovement(event);
   if (!state.hasStarted) {
     startRun();
   } else if (state.paused) {
@@ -3700,6 +4215,19 @@ canvas.addEventListener("touchstart", (event) => {
     jump();
   }
 }, { passive: false });
+
+canvas.addEventListener("touchmove", (event) => {
+  if (!isBossFightActive()) {
+    return;
+  }
+  event.preventDefault();
+  updateTouchBossMovement(event);
+}, { passive: false });
+
+canvas.addEventListener("touchend", () => {
+  state.input.left = false;
+  state.input.right = false;
+});
 
 canvas.addEventListener("dblclick", (event) => {
   event.preventDefault();

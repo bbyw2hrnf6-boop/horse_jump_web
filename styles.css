@@ -10,6 +10,18 @@
   --accent-3: #d5a62c;
 }
 
+body.dark-mode {
+  --bg-top: #162334;
+  --bg-bottom: #0d121a;
+  --panel: rgba(23, 31, 43, 0.94);
+  --panel-border: #6d86a5;
+  --text: #edf5ff;
+  --muted: #b7c7d9;
+  --accent: #66d2a7;
+  --accent-2: #5a8de8;
+  --accent-3: #f2c94c;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -116,11 +128,32 @@ h2, p {
 
 .status-bar-actions {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .pause-button {
   padding: 9px 14px;
   background: var(--accent-2);
+}
+
+.settings-gear {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 2px solid rgba(106, 77, 53, 0.24);
+  border-radius: 50%;
+  place-items: center;
+  background: rgba(255, 251, 244, 0.76);
+  color: var(--text);
+  box-shadow: 0 8px 18px rgba(47, 36, 27, 0.14);
+}
+
+body.dark-mode .settings-gear {
+  border-color: rgba(237, 245, 255, 0.22);
+  background: rgba(23, 31, 43, 0.84);
 }
 
 .game-stage {
@@ -160,6 +193,10 @@ h2, p {
 
 .playfield-overlay[hidden] {
   display: none;
+}
+
+.settings-overlay {
+  z-index: 8;
 }
 
 .playfield-dialog {
@@ -225,6 +262,55 @@ h2, p {
   display: flex;
   justify-content: flex-end;
   margin-top: 18px;
+}
+
+.settings-dialog {
+  width: min(480px, 100%);
+}
+
+.settings-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid rgba(106, 77, 53, 0.16);
+  border-radius: 12px;
+  background: #f8f0e6;
+}
+
+body.dark-mode .settings-row {
+  border-color: rgba(237, 245, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.settings-row span {
+  min-width: 0;
+}
+
+.settings-row strong,
+.settings-row small {
+  display: block;
+}
+
+.settings-row small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.settings-row input {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  accent-color: var(--accent-2);
 }
 
 .game-over-dialog {
@@ -332,7 +418,7 @@ canvas {
 
 .corner-perk-dash {
   position: absolute;
-  top: 10px;
+  top: 58px;
   right: 10px;
   width: min(126px, calc(100% - 20px));
   padding: 6px;
@@ -658,7 +744,11 @@ input:focus-visible {
   }
 
   .pause-button {
-    width: 100%;
+    flex: 1 1 auto;
+  }
+
+  .settings-gear {
+    flex: 0 0 auto;
   }
 
   .game-stage {
@@ -830,9 +920,31 @@ input:focus-visible {
   }
 
   .game-header,
-  .status-bar,
   .side-panel {
     display: none;
+  }
+
+  .status-bar {
+    position: fixed;
+    top: 6px;
+    right: 6px;
+    z-index: 9;
+    display: block;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .status-bar-copy,
+  .pause-button {
+    display: none;
+  }
+
+  .status-bar-actions {
+    display: block;
+    width: auto;
   }
 
   .game-panel {
@@ -876,17 +988,17 @@ input:focus-visible {
   .game-over-overlay {
     align-items: center;
     justify-items: start;
-    padding: 8px 10px;
+    padding: 4px 6px;
     background: linear-gradient(90deg, rgba(47, 36, 27, 0.26), rgba(47, 36, 27, 0.04));
   }
 
   .playfield-dialog {
-    width: min(270px, calc(100vw - 22px));
-    max-height: calc(100dvh - 16px);
-    padding: 12px;
+    width: min(180px, calc(100vw - 12px));
+    max-height: calc(100dvh - 8px);
+    padding: 7px;
     overflow: auto;
-    border-width: 2px;
-    border-radius: 12px;
+    border-width: 1px;
+    border-radius: 9px;
   }
 
   .game-over-dialog {
@@ -900,24 +1012,21 @@ input:focus-visible {
 
   .playfield-dialog h2,
   .game-over-dialog h2 {
-    font-size: 1.05rem;
+    font-size: 0.82rem;
     line-height: 1.08;
   }
 
   .dialog-kicker {
-    margin-bottom: 4px;
-    font-size: 0.62rem;
+    display: none;
   }
 
   .dialog-copy {
-    margin-top: 4px;
-    font-size: 0.72rem;
-    line-height: 1.24;
+    display: none;
   }
 
   .dialog-grid {
     display: block;
-    margin-top: 8px;
+    margin-top: 4px;
   }
 
   .dialog-grid div {
@@ -936,17 +1045,50 @@ input:focus-visible {
 
   .dialog-grid p {
     color: var(--muted);
-    font-size: 0.7rem;
-    line-height: 1.22;
+    font-size: 0.55rem;
+    line-height: 1.15;
   }
 
   .playfield-dialog-actions {
     justify-content: start;
-    margin-top: 8px;
+    margin-top: 5px;
   }
 
   .playfield-dialog-actions button {
-    padding: 8px 12px;
-    font-size: 0.78rem;
+    padding: 5px 8px;
+    font-size: 0.62rem;
+  }
+
+  .settings-gear {
+    width: 32px;
+    height: 32px;
+    font-size: 0.9rem;
+  }
+
+  .settings-dialog {
+    width: min(260px, calc(100vw - 16px));
+    padding: 10px;
+  }
+
+  .settings-dialog .dialog-kicker,
+  .settings-dialog .dialog-copy {
+    display: block;
+  }
+
+  .settings-dialog h2 {
+    font-size: 1rem;
+  }
+
+  .settings-list {
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .settings-row {
+    padding: 7px;
+  }
+
+  .settings-row small {
+    display: none;
   }
 }

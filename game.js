@@ -1,4 +1,5 @@
 const LOCAL_STORAGE_KEY = "horse-jump-web-local-leaderboard";
+const SETTINGS_STORAGE_KEY = "horse-jump-web-settings";
 const LEADERBOARD_PAGE_SIZE = 20;
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyAukUvsI-plRUwP_dX34v-xGe34yERqoSI",
@@ -171,17 +172,29 @@ const resumeGameButton = document.getElementById("resumeGameButton");
 const gamePanel = document.getElementById("gamePanel");
 const gameStage = document.getElementById("gameStage");
 const playfield = document.getElementById("playfield");
+const settingsButton = document.getElementById("settingsButton");
+const settingsOverlay = document.getElementById("settingsOverlay");
+const closeSettingsButton = document.getElementById("closeSettingsButton");
+const darkModeToggle = document.getElementById("darkModeToggle");
+const hardcoreToggle = document.getElementById("hardcoreToggle");
+const soundToggle = document.getElementById("soundToggle");
 const perkButtons = [...document.querySelectorAll(".perk-button")];
 
 const leaderboard = new LeaderboardService();
 
+const CANVAS_WIDTH = 960;
 const DESKTOP_CANVAS_HEIGHT = 640;
 const MOBILE_CANVAS_HEIGHT = 840;
 const mobileCanvasQuery = window.matchMedia("(max-width: 720px)");
-canvas.height = mobileCanvasQuery.matches ? MOBILE_CANVAS_HEIGHT : DESKTOP_CANVAS_HEIGHT;
+const CANVAS_HEIGHT = mobileCanvasQuery.matches ? MOBILE_CANVAS_HEIGHT : DESKTOP_CANVAS_HEIGHT;
+const CANVAS_PIXEL_RATIO = Math.min(2, window.devicePixelRatio || 1);
+canvas.width = Math.round(CANVAS_WIDTH * CANVAS_PIXEL_RATIO);
+canvas.height = Math.round(CANVAS_HEIGHT * CANVAS_PIXEL_RATIO);
+canvas.style.aspectRatio = `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`;
+ctx.setTransform(CANVAS_PIXEL_RATIO, 0, 0, CANVAS_PIXEL_RATIO, 0, 0);
 
-const WIDTH = canvas.width;
-const HEIGHT = canvas.height;
+const WIDTH = CANVAS_WIDTH;
+const HEIGHT = CANVAS_HEIGHT;
 const GROUND_Y = Math.round(HEIGHT * 0.725);
 const OBSTACLE_SCALE = 1.24;
 const PICKUP_SCALE = 1.16;
@@ -193,6 +206,24 @@ const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
 const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
 const GAME_UPDATES = [
+  {
+    dateTime: "2026-05-20T16:55:00+02:00",
+    displayTime: "May 20, 2026 at 16:55",
+    title: "Cleaner Hardcore And Scenic Backgrounds",
+    description: "Hardcore mode now spaces threats out better, settings moved outside the playfield, and the scrolling landscape has richer animated layers.",
+  },
+  {
+    dateTime: "2026-05-20T16:28:00+02:00",
+    displayTime: "May 20, 2026 at 16:28",
+    title: "Settings And Hardcore Mode",
+    description: "A new gear menu adds dark mode, sound control, and hardcore mode with flying enemies and boss waves.",
+  },
+  {
+    dateTime: "2026-05-20T16:18:00+02:00",
+    displayTime: "May 20, 2026 at 16:18",
+    title: "HD Obstacle Details",
+    description: "Obstacles have sharper layered drawings, extra highlights, and more detailed canvas styling.",
+  },
   {
     dateTime: "2026-05-20T15:48:00+02:00",
     displayTime: "May 20, 2026 at 15:48",
@@ -281,6 +312,12 @@ const GAME_UPDATES = [
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 const mobileLandscapeQuery = window.matchMedia("(max-width: 980px) and (orientation: landscape)");
 
+const appSettings = {
+  darkMode: false,
+  hardcore: false,
+  sound: true,
+};
+
 const audioState = {
   enabled: Boolean(AudioContextClass),
   unlocked: false,
@@ -328,6 +365,10 @@ const state = {
   bullUntil: 0,
   nextShotFrame: 0,
   obstacles: [],
+  flyingEnemies: [],
+  boss: null,
+  bossTimer: 1250,
+  flyingTimer: 260,
   coinsInWorld: [],
   pickups: [],
   celebrationBursts: [],
@@ -380,6 +421,7 @@ let leaderboardPageIndex = 0;
 let leaderboardLoading = false;
 let visibleGameUpdateCount = COLLAPSED_UPDATE_COUNT;
 let gameplayFocusTimer = null;
+let pausedBySettings = false;
 
 function isMobileLandscapeLayout() {
   return mobileLandscapeQuery.matches;
@@ -421,6 +463,75 @@ function refocusGameplayAfterViewportChange() {
   focusGameplayArea(true);
   window.setTimeout(() => focusGameplayArea(true), 120);
   window.setTimeout(() => focusGameplayArea(true), 360);
+}
+
+function loadSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || "{}");
+    if (typeof saved.darkMode === "boolean") appSettings.darkMode = saved.darkMode;
+    if (typeof saved.hardcore === "boolean") appSettings.hardcore = saved.hardcore;
+    if (typeof saved.sound === "boolean") appSettings.sound = saved.sound;
+  } catch (_error) {
+    return;
+  }
+}
+
+function saveSettings() {
+  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(appSettings));
+}
+
+function syncSettingsControls() {
+  if (darkModeToggle) darkModeToggle.checked = appSettings.darkMode;
+  if (hardcoreToggle) hardcoreToggle.checked = appSettings.hardcore;
+  if (soundToggle) soundToggle.checked = appSettings.sound;
+}
+
+function applySettings() {
+  document.body.classList.toggle("dark-mode", appSettings.darkMode);
+  if (!appSettings.sound) {
+    stopAreaMusic();
+    audioState.started = false;
+  } else if (audioState.unlocked && state.hasStarted && !state.paused && !state.gameOver) {
+    startAreaMusic(getDesiredMusic(), true);
+    audioState.started = true;
+  }
+  syncSettingsControls();
+}
+
+function setSetting(name, value) {
+  appSettings[name] = value;
+  saveSettings();
+  applySettings();
+  if (name === "hardcore") {
+    state.status = value
+      ? "Hardcore mode enabled: faster runs, flying enemies, and boss waves."
+      : "Hardcore mode disabled.";
+    if (!value) {
+      state.flyingEnemies = [];
+      state.boss = null;
+    }
+  }
+}
+
+function openSettings() {
+  if (settingsOverlay) {
+    settingsOverlay.hidden = false;
+    syncSettingsControls();
+    pausedBySettings = state.hasStarted && !state.paused && !state.gameOver;
+    if (pausedBySettings) {
+      togglePause(true);
+    }
+  }
+}
+
+function closeSettings() {
+  if (settingsOverlay) {
+    settingsOverlay.hidden = true;
+    if (pausedBySettings) {
+      pausedBySettings = false;
+      togglePause(false);
+    }
+  }
 }
 
 function ensureAudioReady() {
@@ -470,7 +581,7 @@ function playTone({
   slideTo = null,
   output = null,
 }) {
-  if (!audioState.unlocked || !audioState.context || !audioState.master) {
+  if (!appSettings.sound || !audioState.unlocked || !audioState.context || !audioState.master) {
     return;
   }
 
@@ -647,7 +758,7 @@ function scheduleAreaMusic(area) {
 }
 
 function startAreaMusic(area, forceRestart = false) {
-  if (!audioState.unlocked) {
+  if (!appSettings.sound || !audioState.unlocked) {
     return;
   }
 
@@ -684,7 +795,7 @@ function resetGame() {
   state.paused = false;
   state.status = FRIDAY_EVENT_ACTIVE
     ? "Friday special active: find meat to become a bull."
-    : "Press Space or tap to jump.";
+    : (appSettings.hardcore ? "Hardcore run ready. Watch for flying enemies and bosses." : "Press Space or tap to jump.");
   state.worldSpeed = 7.45;
   state.flyUntil = 0;
   state.magnetUntil = 0;
@@ -696,6 +807,10 @@ function resetGame() {
   state.bullUntil = 0;
   state.nextShotFrame = 0;
   state.obstacles = [];
+  state.flyingEnemies = [];
+  state.boss = null;
+  state.bossTimer = 1250;
+  state.flyingTimer = 260;
   state.coinsInWorld = [];
   state.pickups = [];
   state.celebrationBursts = [];
@@ -732,7 +847,7 @@ function startRun() {
   lastTickTime = null;
   state.status = FRIDAY_EVENT_ACTIVE
     ? "Friday special active: find meat to become a bull."
-    : "Run started. Jump with Space or tap.";
+    : (appSettings.hardcore ? "Hardcore run started. Boss waves are active." : "Run started. Jump with Space or tap.");
   if (audioState.unlocked) {
     startAreaMusic(getDesiredMusic(), true);
     audioState.started = true;
@@ -767,12 +882,19 @@ function togglePause(forcePaused = null) {
 }
 
 function getAreaTheme() {
-  const themes = [
+  const lightThemes = [
     { sky: "#d9efff", ground: "#88c364", ground2: "#70ad54", mountain: "#bfd4c0" },
     { sky: "#ffd9b5", ground: "#cf9b60", ground2: "#b77b45", mountain: "#d4b39c" },
     { sky: "#d8e4ff", ground: "#9ec2d8", ground2: "#83acc5", mountain: "#cad3e2" },
     { sky: "#ddf6ff", ground: "#a9d07d", ground2: "#8dc260", mountain: "#ccd9b9" },
   ];
+  const darkThemes = [
+    { sky: "#152235", ground: "#304f35", ground2: "#223b28", mountain: "#26364b" },
+    { sky: "#241d2e", ground: "#644b35", ground2: "#473526", mountain: "#44354c" },
+    { sky: "#101927", ground: "#2f5366", ground2: "#1f3a49", mountain: "#28344a" },
+    { sky: "#102a2b", ground: "#3c5d38", ground2: "#294326", mountain: "#253d35" },
+  ];
+  const themes = appSettings.darkMode ? darkThemes : lightThemes;
   return themes[state.area % themes.length];
 }
 
@@ -912,6 +1034,35 @@ function spawnObstacle() {
   }
 }
 
+function spawnFlyingEnemy() {
+  state.flyingEnemies.push({
+    x: WIDTH + 90,
+    y: 118 + Math.random() * Math.max(80, GROUND_Y - 270),
+    width: 62,
+    height: 38,
+    phase: Math.random() * Math.PI * 2,
+    passed: false,
+  });
+}
+
+function spawnBoss() {
+  if (state.boss) {
+    return;
+  }
+  state.boss = {
+    x: WIDTH + 80,
+    y: 124,
+    width: 154,
+    height: 96,
+    hp: 12,
+    maxHp: 12,
+    phase: Math.random() * Math.PI * 2,
+  };
+  state.status = "Hardcore boss incoming. Use Carrot Blaster to break it.";
+  spawnCelebrationBurst(WIDTH - 140, 110, ["#ff7043", "#ffd54f", "#66d2a7"]);
+  playSpawnSound();
+}
+
 function spawnCoins() {
   const startX = WIDTH + 80;
   const baseY = [GROUND_Y - 80, GROUND_Y - 130, GROUND_Y - 180][Math.floor(Math.random() * 3)];
@@ -1021,7 +1172,7 @@ function updateWorld() {
   if (FRIDAY_EVENT_ACTIVE && state.area !== previousArea && state.frame > 1) {
     spawnCelebrationBurst(WIDTH * 0.5, 84, ["#ffd54f", "#f06292", "#4fc3f7", "#ffffff"]);
   }
-  const baseWorldSpeed = 7.45 + Math.min(8, Math.floor(state.score / 2500)) * 0.5;
+  const baseWorldSpeed = 7.45 + Math.min(8, Math.floor(state.score / 2500)) * 0.5 + (appSettings.hardcore ? 0.65 : 0);
   state.worldSpeed = baseWorldSpeed
     + (state.rottenBoostUntil > state.frame ? 3.2 : 0)
     + (state.bullUntil > state.frame ? 4.4 : 0);
@@ -1034,7 +1185,23 @@ function updateWorld() {
   state.spawnTimer -= 1;
   if (state.spawnTimer <= 0) {
     spawnObstacle();
-    state.spawnTimer = 55 + Math.random() * 45;
+    state.spawnTimer = appSettings.hardcore
+      ? 58 + Math.random() * 50
+      : 55 + Math.random() * 45;
+  }
+
+  if (appSettings.hardcore) {
+    state.flyingTimer -= 1;
+    if (state.flyingTimer <= 0) {
+      spawnFlyingEnemy();
+      state.flyingTimer = 250 + Math.random() * 170;
+    }
+
+    state.bossTimer -= 1;
+    if (state.bossTimer <= 0) {
+      spawnBoss();
+      state.bossTimer = 2600 + Math.random() * 900;
+    }
   }
 
   state.coinTimer -= 1;
@@ -1091,6 +1258,23 @@ function updateWorld() {
   }
   state.obstacles = state.obstacles.filter((item) => item.x + item.width > -30);
 
+  for (const enemy of state.flyingEnemies) {
+    enemy.phase += 0.12;
+    enemy.x -= state.worldSpeed + 2.4;
+    enemy.y += Math.sin(enemy.phase) * 2.1;
+    if (!enemy.passed && enemy.x + enemy.width < state.horse.x) {
+      enemy.passed = true;
+      state.score += 36;
+    }
+  }
+  state.flyingEnemies = state.flyingEnemies.filter((enemy) => enemy.x + enemy.width > -40);
+
+  if (state.boss) {
+    state.boss.phase += 0.08;
+    state.boss.x += Math.max(-4.4, (WIDTH - 230 - state.boss.x) * 0.05);
+    state.boss.y = 118 + Math.sin(state.boss.phase) * 28;
+  }
+
   for (const coin of state.coinsInWorld) {
     if (state.magnetUntil > state.frame) {
       const dx = state.horse.x + 90 - coin.x;
@@ -1124,7 +1308,7 @@ function updateWorld() {
   state.celebrationBursts = state.celebrationBursts.filter((burst) => burst.life > 0);
 
   if (state.blasterUntil > state.frame && state.frame >= state.nextShotFrame) {
-    const target = state.obstacles[0];
+    const target = state.boss || state.flyingEnemies[0] || state.obstacles[0];
     state.projectiles.push({
       x: state.horse.x + 170,
       y: state.horse.y - 90,
@@ -1194,6 +1378,52 @@ function checkCollisions() {
   }
 
   for (const projectile of [...state.projectiles]) {
+    if (state.boss) {
+      const bossHit = (
+        projectile.x + projectile.size > state.boss.x &&
+        projectile.x - projectile.size < state.boss.x + state.boss.width &&
+        projectile.y + projectile.size > state.boss.y &&
+        projectile.y - projectile.size < state.boss.y + state.boss.height
+      );
+      if (bossHit) {
+        state.projectiles.splice(state.projectiles.indexOf(projectile), 1);
+        state.boss.hp -= 1;
+        state.score += 45;
+        spawnCelebrationBurst(projectile.x, projectile.y, ["#ff7043", "#ffd54f", "#66d2a7"]);
+        playSmashSound();
+        if (state.boss.hp <= 0) {
+          spawnCelebrationBurst(state.boss.x + state.boss.width / 2, state.boss.y + state.boss.height / 2, ["#ff7043", "#ffd54f", "#ffffff", "#66d2a7"]);
+          state.boss = null;
+          state.score += 600;
+          state.status = "Boss defeated. Hardcore bonus earned.";
+        }
+        continue;
+      }
+    }
+
+    let projectileUsed = false;
+    for (const enemy of [...state.flyingEnemies]) {
+      const hit = (
+        projectile.x + projectile.size > enemy.x &&
+        projectile.x - projectile.size < enemy.x + enemy.width &&
+        projectile.y + projectile.size > enemy.y &&
+        projectile.y - projectile.size < enemy.y + enemy.height
+      );
+      if (hit) {
+        state.projectiles.splice(state.projectiles.indexOf(projectile), 1);
+        state.flyingEnemies.splice(state.flyingEnemies.indexOf(enemy), 1);
+        state.score += 75;
+        spawnCelebrationBurst(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, ["#66d2a7", "#ffd54f", "#ffffff"]);
+        playSmashSound();
+        projectileUsed = true;
+        break;
+      }
+    }
+
+    if (projectileUsed || !state.projectiles.includes(projectile)) {
+      continue;
+    }
+
     for (const obstacle of [...state.obstacles]) {
       const hit = (
         projectile.x + projectile.size > obstacle.x &&
@@ -1207,6 +1437,41 @@ function checkCollisions() {
         state.score += 30;
         break;
       }
+    }
+  }
+
+  for (const enemy of state.flyingEnemies) {
+    const overlap = (
+      horseBox.left < enemy.x + enemy.width - 4 &&
+      horseBox.right > enemy.x + 4 &&
+      horseBox.top < enemy.y + enemy.height &&
+      horseBox.bottom > enemy.y
+    );
+    if (overlap) {
+      if (state.invisibleUntil > state.frame || state.invisibilityGraceUntil > state.frame) {
+        continue;
+      }
+      state.gameOver = true;
+      state.status = `Game over. Final score: ${state.score}`;
+      stopAreaMusic();
+      playCrashSound();
+      return;
+    }
+  }
+
+  if (state.boss) {
+    const bossOverlap = (
+      horseBox.left < state.boss.x + state.boss.width - 10 &&
+      horseBox.right > state.boss.x + 10 &&
+      horseBox.top < state.boss.y + state.boss.height &&
+      horseBox.bottom > state.boss.y
+    );
+    if (bossOverlap && state.invisibleUntil <= state.frame && state.invisibilityGraceUntil <= state.frame) {
+      state.gameOver = true;
+      state.status = `Game over. Final score: ${state.score}`;
+      stopAreaMusic();
+      playCrashSound();
+      return;
     }
   }
 
@@ -1258,6 +1523,96 @@ function drawBird(bird) {
   ctx.quadraticCurveTo(-6 * bird.size, -wingLift, 0, 0);
   ctx.quadraticCurveTo(6 * bird.size, -wingLift, 14 * bird.size, 0);
   ctx.stroke();
+  ctx.restore();
+}
+
+function drawFlyingEnemy(enemy) {
+  const flap = Math.sin(state.frame * 0.34 + enemy.phase) * 8;
+  ctx.save();
+  ctx.translate(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+  ctx.fillStyle = "#2f4059";
+  ctx.strokeStyle = "#142033";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, enemy.width * 0.26, enemy.height * 0.34, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#5c7da8";
+  ctx.beginPath();
+  ctx.moveTo(-8, -2);
+  ctx.quadraticCurveTo(-34, -22 - flap, -enemy.width * 0.58, 2);
+  ctx.quadraticCurveTo(-28, 16, -8, 8);
+  ctx.moveTo(8, -2);
+  ctx.quadraticCurveTo(34, -22 - flap, enemy.width * 0.58, 2);
+  ctx.quadraticCurveTo(28, 16, 8, 8);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#f6d15f";
+  ctx.beginPath();
+  ctx.moveTo(enemy.width * 0.22, -2);
+  ctx.lineTo(enemy.width * 0.38, 3);
+  ctx.lineTo(enemy.width * 0.22, 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(8, -6, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#142033";
+  ctx.beginPath();
+  ctx.arc(9, -6, 1.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawBoss(boss) {
+  ctx.save();
+  ctx.translate(boss.x, boss.y);
+  ctx.fillStyle = "rgba(0,0,0,0.18)";
+  ctx.beginPath();
+  ctx.ellipse(boss.width * 0.48, boss.height + 8, boss.width * 0.42, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#5f3145";
+  ctx.strokeStyle = "#251520";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.roundRect(10, 20, boss.width - 28, boss.height - 32, 26);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#8d4260";
+  ctx.beginPath();
+  ctx.ellipse(48, 44, 18, 13, -0.2, 0, Math.PI * 2);
+  ctx.ellipse(88, 60, 22, 14, 0.18, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#ffd35c";
+  ctx.beginPath();
+  ctx.moveTo(boss.width - 26, 44);
+  ctx.lineTo(boss.width - 2, 54);
+  ctx.lineTo(boss.width - 26, 64);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(boss.width - 48, 42, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#1b1018";
+  ctx.beginPath();
+  ctx.arc(boss.width - 46, 42, 2.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#251520";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(14, 48);
+  ctx.quadraticCurveTo(-8, 32 + Math.sin(boss.phase) * 6, 8, 18);
+  ctx.stroke();
+  const hpWidth = boss.width - 24;
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.fillRect(12, 4, hpWidth, 8);
+  ctx.fillStyle = "#66d2a7";
+  ctx.fillRect(12, 4, hpWidth * Math.max(0, boss.hp / boss.maxHp), 8);
+  ctx.strokeStyle = "#251520";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(12, 4, hpWidth, 8);
   ctx.restore();
 }
 
@@ -1514,7 +1869,30 @@ function drawHorse() {
   }
 }
 
+function drawRivets(points, color = "rgba(47, 36, 27, 0.55)") {
+  ctx.fillStyle = color;
+  for (const [x, y, radius = 2] of points) {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawWoodGrain(x, y, width, height, color = "rgba(77, 50, 29, 0.35)") {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  for (let index = 0; index < 4; index += 1) {
+    const lineY = y + 8 + index * (height / 5);
+    ctx.moveTo(x + 6, lineY);
+    ctx.bezierCurveTo(x + width * 0.3, lineY - 4, x + width * 0.66, lineY + 5, x + width - 6, lineY);
+  }
+  ctx.stroke();
+}
+
 function drawObstacle(obstacle) {
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
   ctx.fillStyle = "rgba(0,0,0,0.12)";
   ctx.beginPath();
   ctx.ellipse(obstacle.x + obstacle.width / 2, GROUND_Y - 2, obstacle.width / 2, 8, 0, 0, Math.PI * 2);
@@ -1532,6 +1910,18 @@ function drawObstacle(obstacle) {
     ctx.ellipse(obstacle.x + 24, obstacle.y + 18, 10, 8, 0, 0, Math.PI * 2);
     ctx.ellipse(obstacle.x + 42, obstacle.y + 16, 11, 8, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = "rgba(31, 85, 35, 0.55)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(obstacle.x + 18, obstacle.y + 22, 10, Math.PI * 0.1, Math.PI * 1.1);
+    ctx.arc(obstacle.x + 38, obstacle.y + 14, 12, Math.PI * 0.2, Math.PI * 1.2);
+    ctx.arc(obstacle.x + 54, obstacle.y + 24, 9, Math.PI * 0.1, Math.PI * 1.1);
+    ctx.stroke();
+    drawRivets([
+      [obstacle.x + 28, obstacle.y + 24, 2],
+      [obstacle.x + 46, obstacle.y + 25, 2],
+      [obstacle.x + 38, obstacle.y + 10, 1.8],
+    ], "#d84a4a");
     return;
   }
 
@@ -1552,6 +1942,18 @@ function drawObstacle(obstacle) {
     ctx.moveTo(obstacle.x + 6, obstacle.y + obstacle.height - 12);
     ctx.lineTo(obstacle.x + obstacle.width - 6, obstacle.y + obstacle.height - 12);
     ctx.stroke();
+    ctx.strokeStyle = "rgba(70, 42, 23, 0.42)";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + obstacle.width * 0.34, obstacle.y + 8);
+    ctx.bezierCurveTo(obstacle.x + obstacle.width * 0.26, obstacle.y + 20, obstacle.x + obstacle.width * 0.3, obstacle.y + obstacle.height - 12, obstacle.x + obstacle.width * 0.34, obstacle.y + obstacle.height - 6);
+    ctx.moveTo(obstacle.x + obstacle.width * 0.66, obstacle.y + 8);
+    ctx.bezierCurveTo(obstacle.x + obstacle.width * 0.76, obstacle.y + 20, obstacle.x + obstacle.width * 0.7, obstacle.y + obstacle.height - 12, obstacle.x + obstacle.width * 0.66, obstacle.y + obstacle.height - 6);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255, 232, 170, 0.35)";
+    ctx.beginPath();
+    ctx.ellipse(obstacle.x + obstacle.width * 0.36, obstacle.y + obstacle.height * 0.28, 7, 4, -0.5, 0, Math.PI * 2);
+    ctx.fill();
     return;
   }
 
@@ -1569,6 +1971,12 @@ function drawObstacle(obstacle) {
     ctx.fillStyle = "#b98b58";
     ctx.fillRect(obstacle.x, obstacle.y + 16, obstacle.width, 6);
     ctx.fillRect(obstacle.x, obstacle.y + 32, obstacle.width, 6);
+    drawWoodGrain(obstacle.x + 2, obstacle.y + 14, obstacle.width - 4, 28, "rgba(79, 48, 25, 0.42)");
+    drawRivets([
+      [obstacle.x + 10, obstacle.y + 19, 1.8],
+      [obstacle.x + 28, obstacle.y + 35, 1.8],
+      [obstacle.x + 46, obstacle.y + 19, 1.8],
+    ]);
     return;
   }
 
@@ -1590,6 +1998,13 @@ function drawObstacle(obstacle) {
     ctx.moveTo(obstacle.x + 20, obstacle.y + obstacle.height - 8);
     ctx.lineTo(obstacle.x + obstacle.width - 8, obstacle.y + obstacle.height - 8);
     ctx.stroke();
+    drawWoodGrain(obstacle.x + 14, obstacle.y + 5, obstacle.width - 18, obstacle.height - 10, "rgba(52, 31, 18, 0.46)");
+    ctx.strokeStyle = "#c0905c";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(obstacle.x + 12, obstacle.y + obstacle.height / 2, 3, 0, Math.PI * 2);
+    ctx.arc(obstacle.x + 12, obstacle.y + obstacle.height / 2, 11, 0.2, Math.PI * 1.8);
+    ctx.stroke();
     return;
   }
 
@@ -1608,6 +2023,12 @@ function drawObstacle(obstacle) {
     ctx.stroke();
     ctx.fillStyle = "#d8c398";
     ctx.fillRect(obstacle.x + 12, obstacle.y + 10, obstacle.width - 24, 4);
+    ctx.fillStyle = "#f2dfb4";
+    ctx.fillRect(obstacle.x + 18, obstacle.y + 9, obstacle.width - 36, 2);
+    drawRivets([
+      [obstacle.x + 20, obstacle.y + 12, 1.8],
+      [obstacle.x + obstacle.width - 20, obstacle.y + 12, 1.8],
+    ], "rgba(84, 54, 31, 0.62)");
     return;
   }
 
@@ -1680,6 +2101,10 @@ function drawObstacle(obstacle) {
     ctx.stroke();
     ctx.fillStyle = "#f2cf4a";
     ctx.fillRect(obstacle.x + obstacle.width - 28, obstacle.y + 38, 14, 8);
+    ctx.fillStyle = "#23481b";
+    for (let index = 0; index < 4; index += 1) {
+      ctx.fillRect(obstacle.x + obstacle.width - 48, obstacle.y + 42 + index * 5, 18, 2);
+    }
     ctx.fillStyle = "#315f23";
     ctx.fillRect(obstacle.x + 58, obstacle.y + 18, 6, 18);
     ctx.fillStyle = "#2e2e2e";
@@ -1692,6 +2117,16 @@ function drawObstacle(obstacle) {
     ctx.arc(obstacle.x + 28, GROUND_Y, 8, 0, Math.PI * 2);
     ctx.arc(obstacle.x + obstacle.width - 24, GROUND_Y, 5, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = "#f4f1e6";
+    ctx.lineWidth = 2;
+    for (const wheelX of [28, obstacle.width - 24]) {
+      ctx.beginPath();
+      ctx.moveTo(obstacle.x + wheelX, GROUND_Y);
+      ctx.lineTo(obstacle.x + wheelX + 13, GROUND_Y);
+      ctx.moveTo(obstacle.x + wheelX, GROUND_Y);
+      ctx.lineTo(obstacle.x + wheelX, GROUND_Y - 13);
+      ctx.stroke();
+    }
     return;
   }
 
@@ -1868,6 +2303,14 @@ function drawObstacle(obstacle) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,0.75)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + 30, obstacle.y + 5);
+    ctx.lineTo(obstacle.x + 34, GROUND_Y - 5);
+    ctx.moveTo(obstacle.x + 10, obstacle.y + 18);
+    ctx.lineTo(obstacle.x + 14, GROUND_Y - 5);
+    ctx.stroke();
     return;
   }
 
@@ -1950,6 +2393,15 @@ function drawObstacle(obstacle) {
     ctx.moveTo(obstacle.x + 30, obstacle.y + 4);
     ctx.lineTo(obstacle.x + 26, GROUND_Y - 4);
     ctx.stroke();
+    ctx.strokeStyle = "rgba(255, 241, 161, 0.78)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let index = 0; index < 6; index += 1) {
+      const y = obstacle.y + 6 + index * 6;
+      ctx.moveTo(obstacle.x + 6, y);
+      ctx.lineTo(obstacle.x + obstacle.width - 7, y + Math.sin(index) * 2);
+    }
+    ctx.stroke();
   } else if (obstacle.type === "crate") {
     ctx.strokeStyle = "#6f4928";
     ctx.lineWidth = 2;
@@ -1961,6 +2413,13 @@ function drawObstacle(obstacle) {
     ctx.moveTo(obstacle.x + obstacle.width / 2, obstacle.y);
     ctx.lineTo(obstacle.x + obstacle.width / 2, GROUND_Y);
     ctx.stroke();
+    drawWoodGrain(obstacle.x + 4, obstacle.y + 4, obstacle.width - 8, obstacle.height - 8);
+    drawRivets([
+      [obstacle.x + 8, obstacle.y + 8, 1.8],
+      [obstacle.x + obstacle.width - 8, obstacle.y + 8, 1.8],
+      [obstacle.x + 8, GROUND_Y - 8, 1.8],
+      [obstacle.x + obstacle.width - 8, GROUND_Y - 8, 1.8],
+    ]);
   } else if (obstacle.type === "pipe") {
     ctx.fillStyle = "#64d064";
     ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, 14);
@@ -2084,25 +2543,110 @@ function drawProjectile(projectile) {
   ctx.restore();
 }
 
+function drawRollingHills(theme) {
+  const farShift = -(state.frame * state.worldSpeed * 0.035) % WIDTH;
+  const midShift = -(state.frame * state.worldSpeed * 0.07) % WIDTH;
+  const nearShift = -(state.frame * state.worldSpeed * 0.13) % WIDTH;
+
+  const skyGlow = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  skyGlow.addColorStop(0, theme.sky);
+  skyGlow.addColorStop(0.52, appSettings.darkMode ? "#273b55" : "#eef7ff");
+  skyGlow.addColorStop(1, appSettings.darkMode ? "#314158" : "#f7eddc");
+  ctx.fillStyle = skyGlow;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  for (let copy = -1; copy <= 1; copy += 1) {
+    const x = farShift + copy * WIDTH;
+    ctx.fillStyle = appSettings.darkMode ? "rgba(72, 93, 120, 0.72)" : "rgba(163, 185, 178, 0.76)";
+    ctx.beginPath();
+    ctx.moveTo(x, GROUND_Y);
+    ctx.bezierCurveTo(x + 120, 220, x + 240, 135, x + 390, GROUND_Y);
+    ctx.bezierCurveTo(x + 520, 245, x + 650, 150, x + 820, GROUND_Y);
+    ctx.lineTo(x + WIDTH, GROUND_Y);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = appSettings.darkMode ? "rgba(33, 55, 74, 0.82)" : "rgba(117, 154, 126, 0.78)";
+    ctx.beginPath();
+    ctx.moveTo(x, GROUND_Y);
+    ctx.bezierCurveTo(x + 180, 286, x + 330, 250, x + 520, GROUND_Y);
+    ctx.bezierCurveTo(x + 670, 292, x + 790, 238, x + WIDTH, GROUND_Y);
+    ctx.lineTo(x + WIDTH, GROUND_Y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  for (let copy = -1; copy <= 1; copy += 1) {
+    const x = midShift + copy * WIDTH;
+    ctx.fillStyle = appSettings.darkMode ? "rgba(26, 49, 45, 0.82)" : "rgba(83, 134, 89, 0.78)";
+    ctx.beginPath();
+    ctx.moveTo(x, GROUND_Y);
+    ctx.bezierCurveTo(x + 160, 338, x + 360, 304, x + 540, GROUND_Y);
+    ctx.bezierCurveTo(x + 700, 330, x + 840, 292, x + WIDTH, GROUND_Y);
+    ctx.lineTo(x + WIDTH, GROUND_Y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  for (let copy = -1; copy <= 1; copy += 1) {
+    const x = nearShift + copy * WIDTH;
+    ctx.fillStyle = appSettings.darkMode ? "rgba(13, 37, 25, 0.72)" : "rgba(43, 98, 52, 0.58)";
+    for (let index = 0; index < 9; index += 1) {
+      const treeX = x + index * 122 + 24;
+      const treeBase = GROUND_Y - 8;
+      const treeH = 42 + (index % 3) * 16;
+      ctx.fillRect(treeX, treeBase - treeH * 0.45, 6, treeH * 0.45);
+      ctx.beginPath();
+      ctx.moveTo(treeX - 22, treeBase - treeH * 0.35);
+      ctx.lineTo(treeX + 3, treeBase - treeH);
+      ctx.lineTo(treeX + 30, treeBase - treeH * 0.35);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(treeX - 18, treeBase - treeH * 0.58);
+      ctx.lineTo(treeX + 3, treeBase - treeH * 1.18);
+      ctx.lineTo(treeX + 24, treeBase - treeH * 0.58);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+}
+
+function drawGroundTexture(theme) {
+  const groundGradient = ctx.createLinearGradient(0, GROUND_Y, 0, HEIGHT);
+  groundGradient.addColorStop(0, theme.ground);
+  groundGradient.addColorStop(0.45, theme.ground2);
+  groundGradient.addColorStop(1, appSettings.darkMode ? "#142017" : "#4d8a43");
+  ctx.fillStyle = groundGradient;
+  ctx.fillRect(0, GROUND_Y, WIDTH, HEIGHT - GROUND_Y);
+
+  const offset = -(state.frame * state.worldSpeed * 0.55) % 42;
+  ctx.strokeStyle = appSettings.darkMode ? "rgba(153, 203, 137, 0.12)" : "rgba(235, 255, 201, 0.32)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = offset - 42; x < WIDTH + 42; x += 14) {
+    ctx.moveTo(x, GROUND_Y + 18);
+    ctx.quadraticCurveTo(x + 7, GROUND_Y + 11, x + 14, GROUND_Y + 18);
+  }
+  ctx.stroke();
+
+  ctx.strokeStyle = appSettings.darkMode ? "rgba(0,0,0,0.22)" : "rgba(52, 98, 43, 0.24)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let x = offset - 60; x < WIDTH + 60; x += 60) {
+    ctx.moveTo(x, GROUND_Y + 46);
+    ctx.lineTo(x + 32, GROUND_Y + 40);
+    ctx.lineTo(x + 64, GROUND_Y + 48);
+  }
+  ctx.stroke();
+}
+
 function drawScene() {
   const theme = getAreaTheme();
   const perkCountdown = getPerkCountdownState();
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
-  ctx.fillStyle = theme.sky;
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-  ctx.fillStyle = theme.mountain;
-  ctx.beginPath();
-  ctx.moveTo(0, GROUND_Y);
-  ctx.lineTo(180, 180);
-  ctx.lineTo(340, GROUND_Y);
-  ctx.lineTo(500, 200);
-  ctx.lineTo(700, GROUND_Y);
-  ctx.lineTo(870, 210);
-  ctx.lineTo(WIDTH, GROUND_Y);
-  ctx.closePath();
-  ctx.fill();
+  drawRollingHills(theme);
 
   for (const cloud of state.clouds) {
     drawCloud(cloud.x, cloud.y, cloud.size);
@@ -2112,16 +2656,15 @@ function drawScene() {
     drawBird(bird);
   }
 
-  ctx.fillStyle = theme.ground;
-  ctx.fillRect(0, GROUND_Y, WIDTH, HEIGHT - GROUND_Y);
-  ctx.fillStyle = theme.ground2;
-  ctx.fillRect(0, GROUND_Y + 20, WIDTH, HEIGHT - GROUND_Y - 20);
+  drawGroundTexture(theme);
 
   for (const floater of state.meadowFloaters) {
     drawMeadowFloater(floater);
   }
 
   for (const obstacle of state.obstacles) drawObstacle(obstacle);
+  for (const enemy of state.flyingEnemies) drawFlyingEnemy(enemy);
+  if (state.boss) drawBoss(state.boss);
   for (const pickup of state.pickups) drawPickup(pickup);
   for (const coin of state.coinsInWorld) drawCoin(coin);
   for (const projectile of state.projectiles) drawProjectile(projectile);
@@ -2552,6 +3095,11 @@ function tick(timestamp = performance.now()) {
 
 document.addEventListener("keydown", (event) => {
   unlockAudio();
+  if (event.code === "Escape" && settingsOverlay && !settingsOverlay.hidden) {
+    event.preventDefault();
+    closeSettings();
+    return;
+  }
   if ((event.code === "KeyP" || event.code === "Escape") && state.hasStarted && !state.gameOver && !state.awaitingScoreEntry) {
     event.preventDefault();
     togglePause();
@@ -2649,6 +3197,45 @@ if (resumeGameButton) {
   });
 }
 
+if (settingsButton) {
+  settingsButton.addEventListener("click", () => {
+    unlockAudio();
+    openSettings();
+  });
+}
+
+if (closeSettingsButton) {
+  closeSettingsButton.addEventListener("click", () => {
+    closeSettings();
+  });
+}
+
+if (settingsOverlay) {
+  settingsOverlay.addEventListener("click", (event) => {
+    if (event.target === settingsOverlay) {
+      closeSettings();
+    }
+  });
+}
+
+if (darkModeToggle) {
+  darkModeToggle.addEventListener("change", () => {
+    setSetting("darkMode", darkModeToggle.checked);
+  });
+}
+
+if (hardcoreToggle) {
+  hardcoreToggle.addEventListener("change", () => {
+    setSetting("hardcore", hardcoreToggle.checked);
+  });
+}
+
+if (soundToggle) {
+  soundToggle.addEventListener("change", () => {
+    setSetting("sound", soundToggle.checked);
+  });
+}
+
 scoreForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   await submitCurrentScore();
@@ -2700,6 +3287,8 @@ if (typeof mobileLandscapeQuery.addEventListener === "function") {
   });
 }
 
+loadSettings();
+applySettings();
 renderGameUpdates();
 renderLeaderboard();
 syncHud();

@@ -6,7 +6,7 @@
   <meta name="description" content="Horse Jump Web is a browser endless runner with perks, coins, carrots, and online leaderboard support.">
   <meta name="theme-color" content="#dbefff">
   <title>Horse Jump Web</title>
-  <link rel="stylesheet" href="./styles.css?v=20260520-6">
+  <link rel="stylesheet" href="./styles.css?v=20260520-8">
 </head>
 <body>
   <div class="app-shell">
@@ -25,6 +25,7 @@
           </div>
           <div class="status-bar-actions">
             <button id="pauseButton" class="pause-button" type="button">Pause</button>
+            <button id="settingsButton" class="settings-gear" type="button" aria-label="Open settings" title="Settings">⚙</button>
           </div>
         </div>
 
@@ -66,6 +67,39 @@
                 <p class="dialog-copy">Press `P`, `Escape`, or Resume when you are ready to continue the run.</p>
                 <div class="playfield-dialog-actions">
                   <button id="resumeGameButton" type="button">Resume</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="playfield-overlay settings-overlay" id="settingsOverlay" hidden>
+              <div class="playfield-dialog settings-dialog">
+                <p class="dialog-kicker">Settings</p>
+                <h2>Game Options</h2>
+                <div class="settings-list">
+                  <label class="settings-row">
+                    <span>
+                      <strong>Dark mode</strong>
+                      <small>Switch between light and dark visuals.</small>
+                    </span>
+                    <input id="darkModeToggle" type="checkbox">
+                  </label>
+                  <label class="settings-row">
+                    <span>
+                      <strong>Hardcore mode</strong>
+                      <small>Faster spawns, flying enemies, and boss waves.</small>
+                    </span>
+                    <input id="hardcoreToggle" type="checkbox">
+                  </label>
+                  <label class="settings-row">
+                    <span>
+                      <strong>Sound</strong>
+                      <small>Turn game sounds and music on or off.</small>
+                    </span>
+                    <input id="soundToggle" type="checkbox">
+                  </label>
+                </div>
+                <div class="playfield-dialog-actions">
+                  <button id="closeSettingsButton" type="button">Close</button>
                 </div>
               </div>
             </section>
@@ -152,6 +186,6 @@
   </div>
 
   <button id="restartButton" type="button" hidden>Restart</button>
-  <script src="./game.js?v=20260520-6"></script>
+  <script src="./game.js?v=20260520-8"></script>
 </body>
 </html>

@@ -18,6 +18,11 @@
           <p class="game-header-subtitle">Jump, collect coins, unlock perks, and survive as long as you can.</p>
         </header>
 
+        <div class="status-bar" aria-live="polite">
+          <strong class="status-bar-title">Horse Jump Web</strong>
+          <p id="statusText">Press Space or tap to jump.</p>
+        </div>
+
         <div class="game-stage">
           <div class="playfield">
             <canvas id="gameCanvas" width="960" height="640" aria-label="Horse Jump endless runner game" role="img">
@@ -105,7 +110,6 @@
     </main>
   </div>
 
-  <p id="statusText" hidden>Press Space or tap to jump.</p>
   <button id="restartButton" type="button" hidden>Restart</button>
   <script src="./game.js?v=20260519-9"></script>
 </body>

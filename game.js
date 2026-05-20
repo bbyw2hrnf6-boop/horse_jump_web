@@ -162,6 +162,7 @@ const scorePromptText = document.getElementById("scorePromptText");
 const gameOverOverlay = document.getElementById("gameOverOverlay");
 const finalScoreValue = document.getElementById("finalScoreValue");
 const overlayRestartButton = document.getElementById("overlayRestartButton");
+const statusText = document.getElementById("statusText");
 const perkButtons = [...document.querySelectorAll(".perk-button")];
 
 const leaderboard = new LeaderboardService();
@@ -1934,6 +1935,7 @@ function syncHud() {
   const coinText = `${state.coins}`;
   const areaText = `${state.area + 1}`;
   const perkText = getActivePerk();
+  const statusLine = state.status;
   const submitText = state.awaitingScoreEntry
     ? (state.scoreSubmissionInProgress
       ? "Saving..."
@@ -1974,6 +1976,10 @@ function syncHud() {
   if (hudCache.perk !== perkText) {
     perkValue.textContent = perkText;
     hudCache.perk = perkText;
+  }
+  if (statusText && hudCache.status !== statusLine) {
+    statusText.textContent = statusLine;
+    hudCache.status = statusLine;
   }
   if (hudCache.submitText !== submitText) {
     scoreSubmitButton.textContent = submitText;

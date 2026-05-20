@@ -207,6 +207,12 @@ const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
 const GAME_UPDATES = [
   {
+    dateTime: "2026-05-20T17:18:00+02:00",
+    displayTime: "May 20, 2026 at 17:18",
+    title: "Distinct Seasons And 3D Obstacles",
+    description: "Each season now has a stronger identity, including alpine winter scenery, richer ground details, and more dimensional obstacle art.",
+  },
+  {
     dateTime: "2026-05-20T16:55:00+02:00",
     displayTime: "May 20, 2026 at 16:55",
     title: "Cleaner Hardcore And Scenic Backgrounds",
@@ -883,16 +889,120 @@ function togglePause(forcePaused = null) {
 
 function getAreaTheme() {
   const lightThemes = [
-    { sky: "#d9efff", ground: "#88c364", ground2: "#70ad54", mountain: "#bfd4c0" },
-    { sky: "#ffd9b5", ground: "#cf9b60", ground2: "#b77b45", mountain: "#d4b39c" },
-    { sky: "#d8e4ff", ground: "#9ec2d8", ground2: "#83acc5", mountain: "#cad3e2" },
-    { sky: "#ddf6ff", ground: "#a9d07d", ground2: "#8dc260", mountain: "#ccd9b9" },
+    {
+      season: "spring",
+      sky: "#d9efff",
+      skyMid: "#eefbff",
+      skyBottom: "#f4ead8",
+      ground: "#8ed06a",
+      ground2: "#62a94d",
+      ground3: "#3f8338",
+      far: "rgba(166, 196, 170, 0.78)",
+      mid: "rgba(91, 151, 92, 0.78)",
+      near: "rgba(45, 105, 50, 0.58)",
+      tree: "rgba(42, 109, 55, 0.58)",
+      accent: "#f5a6c8",
+    },
+    {
+      season: "summer",
+      sky: "#ffd9b5",
+      skyMid: "#ffe9c7",
+      skyBottom: "#f1c16c",
+      ground: "#cf9b60",
+      ground2: "#aa7a38",
+      ground3: "#7e572a",
+      far: "rgba(214, 181, 132, 0.82)",
+      mid: "rgba(177, 125, 70, 0.78)",
+      near: "rgba(114, 83, 39, 0.55)",
+      tree: "rgba(83, 86, 37, 0.55)",
+      accent: "#f5cf4d",
+    },
+    {
+      season: "winter",
+      sky: "#d8eaff",
+      skyMid: "#eef7ff",
+      skyBottom: "#f8fbff",
+      ground: "#eef7ff",
+      ground2: "#c8dff2",
+      ground3: "#9ebbd4",
+      far: "rgba(196, 213, 231, 0.94)",
+      mid: "rgba(150, 176, 199, 0.84)",
+      near: "rgba(106, 133, 154, 0.5)",
+      tree: "rgba(44, 73, 73, 0.58)",
+      accent: "#ffffff",
+    },
+    {
+      season: "autumn",
+      sky: "#e8f0ff",
+      skyMid: "#ffdcbc",
+      skyBottom: "#f0ad75",
+      ground: "#b9793f",
+      ground2: "#8d5430",
+      ground3: "#603923",
+      far: "rgba(177, 137, 102, 0.8)",
+      mid: "rgba(140, 90, 55, 0.78)",
+      near: "rgba(92, 53, 31, 0.56)",
+      tree: "rgba(119, 70, 34, 0.62)",
+      accent: "#d65b2a",
+    },
   ];
   const darkThemes = [
-    { sky: "#152235", ground: "#304f35", ground2: "#223b28", mountain: "#26364b" },
-    { sky: "#241d2e", ground: "#644b35", ground2: "#473526", mountain: "#44354c" },
-    { sky: "#101927", ground: "#2f5366", ground2: "#1f3a49", mountain: "#28344a" },
-    { sky: "#102a2b", ground: "#3c5d38", ground2: "#294326", mountain: "#253d35" },
+    {
+      season: "spring",
+      sky: "#152235",
+      skyMid: "#263b53",
+      skyBottom: "#334557",
+      ground: "#304f35",
+      ground2: "#223b28",
+      ground3: "#142518",
+      far: "rgba(72, 93, 120, 0.72)",
+      mid: "rgba(34, 64, 55, 0.82)",
+      near: "rgba(13, 37, 25, 0.72)",
+      tree: "rgba(25, 57, 35, 0.76)",
+      accent: "#d66aa3",
+    },
+    {
+      season: "summer",
+      sky: "#241d2e",
+      skyMid: "#46354c",
+      skyBottom: "#6b4e37",
+      ground: "#644b35",
+      ground2: "#473526",
+      ground3: "#2f2218",
+      far: "rgba(78, 62, 84, 0.82)",
+      mid: "rgba(95, 64, 42, 0.78)",
+      near: "rgba(54, 40, 24, 0.72)",
+      tree: "rgba(65, 61, 29, 0.66)",
+      accent: "#d79b32",
+    },
+    {
+      season: "winter",
+      sky: "#101927",
+      skyMid: "#1e3147",
+      skyBottom: "#32475e",
+      ground: "#2f5366",
+      ground2: "#1f3a49",
+      ground3: "#152532",
+      far: "rgba(86, 111, 139, 0.9)",
+      mid: "rgba(52, 78, 101, 0.86)",
+      near: "rgba(27, 49, 63, 0.72)",
+      tree: "rgba(17, 43, 45, 0.76)",
+      accent: "#d8f2ff",
+    },
+    {
+      season: "autumn",
+      sky: "#102a2b",
+      skyMid: "#394034",
+      skyBottom: "#5b3c2d",
+      ground: "#3c5d38",
+      ground2: "#294326",
+      ground3: "#1d2f1c",
+      far: "rgba(70, 83, 58, 0.76)",
+      mid: "rgba(74, 55, 34, 0.78)",
+      near: "rgba(45, 30, 21, 0.72)",
+      tree: "rgba(92, 49, 25, 0.7)",
+      accent: "#c45730",
+    },
   ];
   const themes = appSettings.darkMode ? darkThemes : lightThemes;
   return themes[state.area % themes.length];
@@ -1890,6 +2000,47 @@ function drawWoodGrain(x, y, width, height, color = "rgba(77, 50, 29, 0.35)") {
   ctx.stroke();
 }
 
+function draw3DBox(x, y, width, height, colors) {
+  const depth = Math.min(16, width * 0.2, height * 0.32);
+  const frontGradient = ctx.createLinearGradient(x, y, x + width, y + height);
+  frontGradient.addColorStop(0, colors.frontLight);
+  frontGradient.addColorStop(0.55, colors.front);
+  frontGradient.addColorStop(1, colors.frontDark);
+
+  ctx.fillStyle = colors.top;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + depth, y - depth);
+  ctx.lineTo(x + width + depth, y - depth);
+  ctx.lineTo(x + width, y);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = colors.side;
+  ctx.beginPath();
+  ctx.moveTo(x + width, y);
+  ctx.lineTo(x + width + depth, y - depth);
+  ctx.lineTo(x + width + depth, y + height - depth);
+  ctx.lineTo(x + width, y + height);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = frontGradient;
+  ctx.fillRect(x, y, width, height);
+  ctx.strokeStyle = colors.stroke;
+  ctx.lineWidth = 2.4;
+  ctx.strokeRect(x, y, width, height);
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + depth, y - depth);
+  ctx.lineTo(x + width + depth, y - depth);
+  ctx.lineTo(x + width, y);
+  ctx.lineTo(x + width + depth, y - depth);
+  ctx.lineTo(x + width + depth, y + height - depth);
+  ctx.lineTo(x + width, y + height);
+  ctx.stroke();
+}
+
 function drawObstacle(obstacle) {
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
@@ -1926,7 +2077,11 @@ function drawObstacle(obstacle) {
   }
 
   if (obstacle.type === "barrel") {
-    ctx.fillStyle = "#8c5a34";
+    const barrelGradient = ctx.createLinearGradient(obstacle.x, obstacle.y, obstacle.x + obstacle.width, obstacle.y + obstacle.height);
+    barrelGradient.addColorStop(0, "#b57a43");
+    barrelGradient.addColorStop(0.48, "#8c5a34");
+    barrelGradient.addColorStop(1, "#4d2e1c");
+    ctx.fillStyle = barrelGradient;
     ctx.strokeStyle = "#5d3a22";
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -2361,6 +2516,70 @@ function drawObstacle(obstacle) {
     return;
   }
 
+  if (obstacle.type === "hay") {
+    draw3DBox(obstacle.x, obstacle.y + 3, obstacle.width, obstacle.height - 3, {
+      top: "#f4d977",
+      side: "#b9892f",
+      frontLight: "#ffe58a",
+      front: "#e2bd4f",
+      frontDark: "#b8862e",
+      stroke: "#9f7327",
+    });
+    ctx.strokeStyle = "rgba(126, 89, 21, 0.42)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let index = 0; index < 7; index += 1) {
+      const y = obstacle.y + 10 + index * ((obstacle.height - 12) / 7);
+      ctx.moveTo(obstacle.x + 7, y);
+      ctx.bezierCurveTo(obstacle.x + obstacle.width * 0.33, y - 5, obstacle.x + obstacle.width * 0.66, y + 4, obstacle.x + obstacle.width - 7, y - 1);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255, 245, 162, 0.78)";
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    for (let index = 0; index < 8; index += 1) {
+      const x = obstacle.x + 8 + (index * (obstacle.width - 16)) / 7;
+      ctx.moveTo(x, obstacle.y + 7);
+      ctx.lineTo(x - 4 + Math.sin(index) * 3, GROUND_Y - 7);
+    }
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.28)";
+    ctx.beginPath();
+    ctx.ellipse(obstacle.x + obstacle.width * 0.3, obstacle.y + 16, obstacle.width * 0.18, 5, -0.25, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+
+  if (obstacle.type === "crate") {
+    draw3DBox(obstacle.x, obstacle.y + 2, obstacle.width, obstacle.height - 2, {
+      top: "#b98452",
+      side: "#70441f",
+      frontLight: "#a87545",
+      front: "#8f5d32",
+      frontDark: "#5f371c",
+      stroke: "#4f3019",
+    });
+    ctx.strokeStyle = "#573318";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + 6, obstacle.y + 8);
+    ctx.lineTo(obstacle.x + obstacle.width - 6, GROUND_Y - 6);
+    ctx.moveTo(obstacle.x + obstacle.width - 6, obstacle.y + 8);
+    ctx.lineTo(obstacle.x + 6, GROUND_Y - 6);
+    ctx.moveTo(obstacle.x + obstacle.width / 2, obstacle.y + 3);
+    ctx.lineTo(obstacle.x + obstacle.width / 2, GROUND_Y - 3);
+    ctx.stroke();
+    drawWoodGrain(obstacle.x + 5, obstacle.y + 7, obstacle.width - 10, obstacle.height - 12, "rgba(38, 22, 11, 0.42)");
+    drawRivets([
+      [obstacle.x + 8, obstacle.y + 10, 2],
+      [obstacle.x + obstacle.width - 8, obstacle.y + 10, 2],
+      [obstacle.x + 8, GROUND_Y - 9, 2],
+      [obstacle.x + obstacle.width - 8, GROUND_Y - 9, 2],
+      [obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2, 2],
+    ]);
+    return;
+  }
+
   ctx.fillStyle = obstacle.color;
   ctx.strokeStyle = obstacle.type === "pipe" ? "#155d22" : "#653f1f";
   ctx.lineWidth = 3;
@@ -2550,23 +2769,76 @@ function drawRollingHills(theme) {
 
   const skyGlow = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
   skyGlow.addColorStop(0, theme.sky);
-  skyGlow.addColorStop(0.52, appSettings.darkMode ? "#273b55" : "#eef7ff");
-  skyGlow.addColorStop(1, appSettings.darkMode ? "#314158" : "#f7eddc");
+  skyGlow.addColorStop(0.52, theme.skyMid);
+  skyGlow.addColorStop(1, theme.skyBottom);
   ctx.fillStyle = skyGlow;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
+  if (theme.season === "summer") {
+    ctx.fillStyle = appSettings.darkMode ? "rgba(232, 164, 65, 0.24)" : "rgba(255, 214, 104, 0.38)";
+    ctx.beginPath();
+    ctx.arc(WIDTH - 120, 88, 56, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (theme.season === "spring") {
+    ctx.strokeStyle = appSettings.darkMode ? "rgba(216, 128, 176, 0.24)" : "rgba(255, 124, 184, 0.35)";
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.arc(210, 208, 128, Math.PI * 1.08, Math.PI * 1.72);
+    ctx.stroke();
+    ctx.strokeStyle = appSettings.darkMode ? "rgba(122, 199, 232, 0.18)" : "rgba(102, 190, 235, 0.28)";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(210, 212, 108, Math.PI * 1.08, Math.PI * 1.72);
+    ctx.stroke();
+  }
+
   for (let copy = -1; copy <= 1; copy += 1) {
     const x = farShift + copy * WIDTH;
-    ctx.fillStyle = appSettings.darkMode ? "rgba(72, 93, 120, 0.72)" : "rgba(163, 185, 178, 0.76)";
+    ctx.fillStyle = theme.far;
     ctx.beginPath();
     ctx.moveTo(x, GROUND_Y);
-    ctx.bezierCurveTo(x + 120, 220, x + 240, 135, x + 390, GROUND_Y);
-    ctx.bezierCurveTo(x + 520, 245, x + 650, 150, x + 820, GROUND_Y);
+    if (theme.season === "winter") {
+      ctx.lineTo(x + 120, 214);
+      ctx.lineTo(x + 218, 96);
+      ctx.lineTo(x + 348, 232);
+      ctx.lineTo(x + 462, 120);
+      ctx.lineTo(x + 660, GROUND_Y);
+      ctx.lineTo(x + 760, 190);
+      ctx.lineTo(x + 908, GROUND_Y);
+    } else if (theme.season === "autumn") {
+      ctx.bezierCurveTo(x + 120, 278, x + 250, 185, x + 390, GROUND_Y);
+      ctx.bezierCurveTo(x + 520, 286, x + 680, 184, x + 830, GROUND_Y);
+    } else {
+      ctx.bezierCurveTo(x + 120, 220, x + 240, 135, x + 390, GROUND_Y);
+      ctx.bezierCurveTo(x + 520, 245, x + 650, 150, x + 820, GROUND_Y);
+    }
     ctx.lineTo(x + WIDTH, GROUND_Y);
     ctx.closePath();
     ctx.fill();
 
-    ctx.fillStyle = appSettings.darkMode ? "rgba(33, 55, 74, 0.82)" : "rgba(117, 154, 126, 0.78)";
+    if (theme.season === "winter") {
+      ctx.fillStyle = appSettings.darkMode ? "rgba(225, 242, 255, 0.32)" : "rgba(255, 255, 255, 0.76)";
+      ctx.beginPath();
+      ctx.moveTo(x + 164, 178);
+      ctx.lineTo(x + 218, 96);
+      ctx.lineTo(x + 282, 178);
+      ctx.lineTo(x + 244, 162);
+      ctx.lineTo(x + 216, 196);
+      ctx.lineTo(x + 194, 158);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x + 418, 178);
+      ctx.lineTo(x + 462, 120);
+      ctx.lineTo(x + 524, 184);
+      ctx.lineTo(x + 486, 170);
+      ctx.lineTo(x + 460, 198);
+      ctx.lineTo(x + 440, 166);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.fillStyle = theme.mid;
     ctx.beginPath();
     ctx.moveTo(x, GROUND_Y);
     ctx.bezierCurveTo(x + 180, 286, x + 330, 250, x + 520, GROUND_Y);
@@ -2578,7 +2850,7 @@ function drawRollingHills(theme) {
 
   for (let copy = -1; copy <= 1; copy += 1) {
     const x = midShift + copy * WIDTH;
-    ctx.fillStyle = appSettings.darkMode ? "rgba(26, 49, 45, 0.82)" : "rgba(83, 134, 89, 0.78)";
+    ctx.fillStyle = theme.mid;
     ctx.beginPath();
     ctx.moveTo(x, GROUND_Y);
     ctx.bezierCurveTo(x + 160, 338, x + 360, 304, x + 540, GROUND_Y);
@@ -2590,24 +2862,174 @@ function drawRollingHills(theme) {
 
   for (let copy = -1; copy <= 1; copy += 1) {
     const x = nearShift + copy * WIDTH;
-    ctx.fillStyle = appSettings.darkMode ? "rgba(13, 37, 25, 0.72)" : "rgba(43, 98, 52, 0.58)";
+    ctx.fillStyle = theme.tree;
     for (let index = 0; index < 9; index += 1) {
       const treeX = x + index * 122 + 24;
       const treeBase = GROUND_Y - 8;
       const treeH = 42 + (index % 3) * 16;
       ctx.fillRect(treeX, treeBase - treeH * 0.45, 6, treeH * 0.45);
       ctx.beginPath();
-      ctx.moveTo(treeX - 22, treeBase - treeH * 0.35);
-      ctx.lineTo(treeX + 3, treeBase - treeH);
-      ctx.lineTo(treeX + 30, treeBase - treeH * 0.35);
-      ctx.closePath();
-      ctx.fill();
+      if (theme.season === "autumn") {
+        ctx.fillStyle = index % 2 === 0 ? "rgba(190, 91, 38, 0.68)" : "rgba(214, 144, 54, 0.68)";
+        ctx.ellipse(treeX + 3, treeBase - treeH * 0.8, 28, 22, 0, 0, Math.PI * 2);
+        ctx.ellipse(treeX - 12, treeBase - treeH * 0.58, 20, 18, 0, 0, Math.PI * 2);
+        ctx.ellipse(treeX + 18, treeBase - treeH * 0.56, 20, 18, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = theme.tree;
+      } else if (theme.season === "summer") {
+        ctx.moveTo(treeX - 28, treeBase - treeH * 0.28);
+        ctx.quadraticCurveTo(treeX + 3, treeBase - treeH * 1.1, treeX + 34, treeBase - treeH * 0.28);
+        ctx.closePath();
+        ctx.fill();
+      } else if (theme.season === "spring") {
+        ctx.fillStyle = index % 2 === 0 ? "rgba(104, 171, 82, 0.64)" : "rgba(242, 149, 189, 0.62)";
+        ctx.ellipse(treeX + 3, treeBase - treeH * 0.8, 25, 21, 0, 0, Math.PI * 2);
+        ctx.ellipse(treeX - 13, treeBase - treeH * 0.56, 18, 16, 0, 0, Math.PI * 2);
+        ctx.ellipse(treeX + 18, treeBase - treeH * 0.58, 18, 16, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255, 229, 239, 0.58)";
+        ctx.beginPath();
+        ctx.arc(treeX - 4, treeBase - treeH * 0.8, 3, 0, Math.PI * 2);
+        ctx.arc(treeX + 14, treeBase - treeH * 0.68, 2.5, 0, Math.PI * 2);
+        ctx.arc(treeX - 16, treeBase - treeH * 0.55, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = theme.tree;
+      } else {
+        ctx.moveTo(treeX - 22, treeBase - treeH * 0.35);
+        ctx.lineTo(treeX + 3, treeBase - treeH);
+        ctx.lineTo(treeX + 30, treeBase - treeH * 0.35);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(treeX - 18, treeBase - treeH * 0.58);
+        ctx.lineTo(treeX + 3, treeBase - treeH * 1.18);
+        ctx.lineTo(treeX + 24, treeBase - treeH * 0.58);
+        ctx.closePath();
+        ctx.fill();
+        if (theme.season === "winter") {
+          ctx.fillStyle = appSettings.darkMode ? "rgba(225, 244, 255, 0.52)" : "rgba(255, 255, 255, 0.82)";
+          ctx.beginPath();
+          ctx.moveTo(treeX - 15, treeBase - treeH * 0.62);
+          ctx.lineTo(treeX + 3, treeBase - treeH * 1.18);
+          ctx.lineTo(treeX + 21, treeBase - treeH * 0.62);
+          ctx.lineTo(treeX + 8, treeBase - treeH * 0.72);
+          ctx.lineTo(treeX + 3, treeBase - treeH * 0.92);
+          ctx.lineTo(treeX - 4, treeBase - treeH * 0.72);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = theme.tree;
+        }
+      }
+    }
+  }
+
+  if (theme.season === "winter") {
+    const liftShift = -(state.frame * state.worldSpeed * 0.09) % 180;
+    ctx.strokeStyle = appSettings.darkMode ? "rgba(216, 242, 255, 0.42)" : "rgba(72, 103, 125, 0.46)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, 148);
+    ctx.lineTo(WIDTH, 86);
+    ctx.stroke();
+    for (let x = liftShift - 180; x < WIDTH + 180; x += 180) {
+      const y = 148 - (x / WIDTH) * 62;
+      ctx.strokeStyle = appSettings.darkMode ? "rgba(216, 242, 255, 0.6)" : "rgba(72, 103, 125, 0.62)";
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(treeX - 18, treeBase - treeH * 0.58);
-      ctx.lineTo(treeX + 3, treeBase - treeH * 1.18);
-      ctx.lineTo(treeX + 24, treeBase - treeH * 0.58);
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y + 24);
+      ctx.stroke();
+      ctx.fillStyle = appSettings.darkMode ? "rgba(38, 58, 76, 0.86)" : "rgba(236, 56, 56, 0.82)";
+      ctx.fillRect(x - 14, y + 24, 28, 12);
+    }
+  } else if (theme.season === "summer") {
+    const barnShift = -(state.frame * state.worldSpeed * 0.11) % 360;
+    for (let x = barnShift - 360; x < WIDTH + 360; x += 360) {
+      ctx.fillStyle = appSettings.darkMode ? "rgba(95, 52, 35, 0.62)" : "rgba(178, 73, 45, 0.58)";
+      ctx.fillRect(x + 80, GROUND_Y - 98, 76, 48);
+      ctx.beginPath();
+      ctx.moveTo(x + 72, GROUND_Y - 98);
+      ctx.lineTo(x + 118, GROUND_Y - 130);
+      ctx.lineTo(x + 164, GROUND_Y - 98);
       ctx.closePath();
       ctx.fill();
+      ctx.fillStyle = appSettings.darkMode ? "rgba(232, 192, 128, 0.38)" : "rgba(255, 232, 159, 0.5)";
+      ctx.fillRect(x + 112, GROUND_Y - 76, 15, 26);
+    }
+  } else if (theme.season === "autumn") {
+    const cabinShift = -(state.frame * state.worldSpeed * 0.1) % 420;
+    for (let x = cabinShift - 420; x < WIDTH + 420; x += 420) {
+      ctx.fillStyle = appSettings.darkMode ? "rgba(82, 45, 26, 0.62)" : "rgba(120, 69, 36, 0.55)";
+      ctx.fillRect(x + 140, GROUND_Y - 88, 68, 42);
+      ctx.fillStyle = appSettings.darkMode ? "rgba(154, 86, 42, 0.62)" : "rgba(193, 91, 41, 0.6)";
+      ctx.beginPath();
+      ctx.moveTo(x + 132, GROUND_Y - 88);
+      ctx.lineTo(x + 174, GROUND_Y - 116);
+      ctx.lineTo(x + 216, GROUND_Y - 88);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+}
+
+function drawSeasonAtmosphere(theme) {
+  if (theme.season === "winter") {
+    ctx.fillStyle = appSettings.darkMode ? "rgba(230, 246, 255, 0.72)" : "rgba(255, 255, 255, 0.9)";
+    for (let index = 0; index < 42; index += 1) {
+      const x = (index * 83 - state.frame * state.worldSpeed * 0.32) % (WIDTH + 80);
+      const y = 42 + ((index * 47 + state.frame * 0.65) % Math.max(160, GROUND_Y - 90));
+      const size = 1.4 + (index % 4) * 0.5;
+      ctx.beginPath();
+      ctx.arc(x < -20 ? x + WIDTH + 80 : x, y, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return;
+  }
+
+  if (theme.season === "spring") {
+    for (let index = 0; index < 22; index += 1) {
+      const x = (index * 97 - state.frame * state.worldSpeed * 0.22) % (WIDTH + 100);
+      const y = 84 + ((index * 53 + state.frame * 0.36) % Math.max(150, GROUND_Y - 130));
+      ctx.fillStyle = index % 2 === 0 ? "rgba(255, 172, 205, 0.48)" : "rgba(255, 238, 245, 0.48)";
+      ctx.save();
+      ctx.translate(x < -20 ? x + WIDTH + 100 : x, y);
+      ctx.rotate(Math.sin(state.frame * 0.04 + index) * 0.8);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 4, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    return;
+  }
+
+  if (theme.season === "autumn") {
+    for (let index = 0; index < 28; index += 1) {
+      const x = (index * 76 - state.frame * state.worldSpeed * 0.38) % (WIDTH + 90);
+      const y = 72 + ((index * 37 + state.frame * 0.78) % Math.max(180, GROUND_Y - 100));
+      ctx.fillStyle = index % 3 === 0 ? "rgba(209, 86, 36, 0.56)" : "rgba(231, 148, 54, 0.5)";
+      ctx.save();
+      ctx.translate(x < -20 ? x + WIDTH + 90 : x, y);
+      ctx.rotate(Math.sin(state.frame * 0.06 + index) * 1.5);
+      ctx.beginPath();
+      ctx.moveTo(0, -5);
+      ctx.quadraticCurveTo(7, -1, 0, 6);
+      ctx.quadraticCurveTo(-7, -1, 0, -5);
+      ctx.fill();
+      ctx.restore();
+    }
+    return;
+  }
+
+  if (theme.season === "summer") {
+    ctx.strokeStyle = appSettings.darkMode ? "rgba(255, 203, 117, 0.13)" : "rgba(255, 236, 165, 0.22)";
+    ctx.lineWidth = 1.2;
+    for (let index = 0; index < 8; index += 1) {
+      const y = 120 + index * 28;
+      const wave = Math.sin(state.frame * 0.025 + index) * 8;
+      ctx.beginPath();
+      ctx.moveTo(70, y + wave);
+      ctx.bezierCurveTo(260, y - 12, 420, y + 16, 620, y + wave);
+      ctx.stroke();
     }
   }
 }
@@ -2616,11 +3038,124 @@ function drawGroundTexture(theme) {
   const groundGradient = ctx.createLinearGradient(0, GROUND_Y, 0, HEIGHT);
   groundGradient.addColorStop(0, theme.ground);
   groundGradient.addColorStop(0.45, theme.ground2);
-  groundGradient.addColorStop(1, appSettings.darkMode ? "#142017" : "#4d8a43");
+  groundGradient.addColorStop(1, theme.ground3);
   ctx.fillStyle = groundGradient;
   ctx.fillRect(0, GROUND_Y, WIDTH, HEIGHT - GROUND_Y);
 
   const offset = -(state.frame * state.worldSpeed * 0.55) % 42;
+
+  if (theme.season === "winter") {
+    ctx.fillStyle = appSettings.darkMode ? "rgba(229, 244, 255, 0.17)" : "rgba(255, 255, 255, 0.5)";
+    ctx.beginPath();
+    ctx.moveTo(0, GROUND_Y + 8);
+    for (let x = 0; x <= WIDTH + 80; x += 80) {
+      ctx.quadraticCurveTo(x + 36, GROUND_Y - 7 + Math.sin((state.frame + x) * 0.015) * 4, x + 80, GROUND_Y + 8);
+    }
+    ctx.lineTo(WIDTH, HEIGHT);
+    ctx.lineTo(0, HEIGHT);
+    ctx.closePath();
+    ctx.fill();
+
+    const skiOffset = -(state.frame * state.worldSpeed * 0.78) % 150;
+    ctx.strokeStyle = appSettings.darkMode ? "rgba(184, 222, 241, 0.38)" : "rgba(93, 146, 174, 0.3)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let x = skiOffset - 150; x < WIDTH + 150; x += 150) {
+      ctx.moveTo(x, GROUND_Y + 38);
+      ctx.quadraticCurveTo(x + 42, GROUND_Y + 28, x + 104, GROUND_Y + 40);
+      ctx.moveTo(x + 4, GROUND_Y + 52);
+      ctx.quadraticCurveTo(x + 46, GROUND_Y + 42, x + 108, GROUND_Y + 54);
+    }
+    ctx.stroke();
+
+    ctx.fillStyle = appSettings.darkMode ? "rgba(210, 235, 247, 0.18)" : "rgba(91, 135, 160, 0.13)";
+    for (let x = skiOffset - 90; x < WIDTH + 120; x += 105) {
+      ctx.beginPath();
+      ctx.ellipse(x, GROUND_Y + 86 + (x % 3) * 8, 18, 4, -0.1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return;
+  }
+
+  if (theme.season === "spring") {
+    ctx.strokeStyle = appSettings.darkMode ? "rgba(153, 203, 137, 0.16)" : "rgba(235, 255, 201, 0.42)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = offset - 42; x < WIDTH + 42; x += 14) {
+      ctx.moveTo(x, GROUND_Y + 18);
+      ctx.quadraticCurveTo(x + 7, GROUND_Y + 9, x + 14, GROUND_Y + 18);
+    }
+    ctx.stroke();
+
+    const flowerOffset = -(state.frame * state.worldSpeed * 0.72) % 84;
+    for (let x = flowerOffset - 84; x < WIDTH + 84; x += 84) {
+      const y = GROUND_Y + 48 + ((Math.floor(x / 84) % 3) * 22);
+      ctx.strokeStyle = "rgba(50, 116, 46, 0.5)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, y + 8);
+      ctx.lineTo(x, y - 4);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255, 218, 82, 0.92)";
+      ctx.beginPath();
+      ctx.arc(x, y - 5, 2.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = x % 2 === 0 ? "rgba(255, 132, 184, 0.82)" : "rgba(247, 255, 156, 0.78)";
+      for (let petal = 0; petal < 5; petal += 1) {
+        ctx.beginPath();
+        ctx.ellipse(x + Math.cos(petal * 1.26) * 5, y - 5 + Math.sin(petal * 1.26) * 5, 3.3, 2.2, petal, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    return;
+  }
+
+  if (theme.season === "summer") {
+    const rowOffset = -(state.frame * state.worldSpeed * 0.62) % 56;
+    ctx.strokeStyle = appSettings.darkMode ? "rgba(232, 184, 86, 0.2)" : "rgba(255, 227, 121, 0.42)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = rowOffset - 80; x < WIDTH + 80; x += 28) {
+      ctx.moveTo(x, GROUND_Y + 18);
+      ctx.lineTo(x + 44, HEIGHT - 12);
+    }
+    ctx.stroke();
+    ctx.fillStyle = appSettings.darkMode ? "rgba(197, 139, 65, 0.2)" : "rgba(126, 84, 32, 0.18)";
+    for (let x = rowOffset - 56; x < WIDTH + 80; x += 72) {
+      ctx.beginPath();
+      ctx.ellipse(x, GROUND_Y + 68, 18, 5, -0.25, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return;
+  }
+
+  if (theme.season === "autumn") {
+    const leafOffset = -(state.frame * state.worldSpeed * 0.68) % 76;
+    ctx.strokeStyle = appSettings.darkMode ? "rgba(0,0,0,0.22)" : "rgba(88, 47, 24, 0.24)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = leafOffset - 76; x < WIDTH + 76; x += 76) {
+      ctx.moveTo(x, GROUND_Y + 44);
+      ctx.lineTo(x + 38, GROUND_Y + 38);
+      ctx.lineTo(x + 76, GROUND_Y + 46);
+    }
+    ctx.stroke();
+    for (let x = leafOffset - 60; x < WIDTH + 100; x += 38) {
+      const y = GROUND_Y + 24 + ((Math.floor(x / 38) % 5) * 22);
+      ctx.fillStyle = x % 3 === 0 ? "rgba(207, 86, 38, 0.74)" : "rgba(224, 153, 54, 0.72)";
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate((x + state.frame) * 0.03);
+      ctx.beginPath();
+      ctx.moveTo(0, -4);
+      ctx.quadraticCurveTo(8, 0, 0, 6);
+      ctx.quadraticCurveTo(-8, 0, 0, -4);
+      ctx.fill();
+      ctx.restore();
+    }
+    return;
+  }
+
   ctx.strokeStyle = appSettings.darkMode ? "rgba(153, 203, 137, 0.12)" : "rgba(235, 255, 201, 0.32)";
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -2656,6 +3191,7 @@ function drawScene() {
     drawBird(bird);
   }
 
+  drawSeasonAtmosphere(theme);
   drawGroundTexture(theme);
 
   for (const floater of state.meadowFloaters) {

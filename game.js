@@ -52,6 +52,10 @@ class LeaderboardService {
     this.pageCursors = new Map();
   }
 
+  sortScores(scores) {
+    return [...scores].sort((a, b) => b.score - a.score);
+  }
+
   normalizeScoreEntry(data) {
     const gameMode = data.gameMode === SCORE_MODES.hardcore ? SCORE_MODES.hardcore : SCORE_MODES.normal;
     return {
@@ -62,37 +66,31 @@ class LeaderboardService {
     };
   }
 
+  async readFirebaseScores(gameMode) {
+    const scoresRef = this.firebaseFns.collection(this.db, FIRESTORE_COLLECTION);
+    const scoreQuery = gameMode === SCORE_MODES.hardcore
+      ? this.firebaseFns.query(scoresRef, this.firebaseFns.where("gameMode", "==", SCORE_MODES.hardcore))
+      : scoresRef;
+    const snapshot = await this.firebaseFns.getDocs(scoreQuery);
+    return this.sortScores(
+      snapshot.docs
+        .map((doc) => this.normalizeScoreEntry(doc.data()))
+        .filter((entry) => entry.gameMode === gameMode)
+    );
+  }
+
   async listScorePage(pageIndex = 0, pageSize = LEADERBOARD_PAGE_SIZE, gameMode = SCORE_MODES.normal) {
     await this.ready;
     if (this.firebaseReady && this.db && this.firebaseFns) {
       try {
-        const scoresRef = this.firebaseFns.collection(this.db, FIRESTORE_COLLECTION);
-        const modeCursors = this.getModeCursors(gameMode);
-        const queryLimit = pageSize * 6;
-        const constraints = [
-          this.firebaseFns.orderBy("score", "desc"),
-        ];
-        const cursor = modeCursors[pageIndex];
-        if (cursor) {
-          constraints.push(this.firebaseFns.startAfter(cursor));
-        }
-        constraints.push(this.firebaseFns.limit(queryLimit));
-
-        const topScoresQuery = this.firebaseFns.query(scoresRef, ...constraints);
-        const snapshot = await this.firebaseFns.getDocs(topScoresQuery);
-        const scores = snapshot.docs
-          .map((doc) => this.normalizeScoreEntry(doc.data()))
-          .filter((entry) => entry.gameMode === gameMode)
-          .slice(0, pageSize);
-        if (snapshot.docs.length > 0) {
-          modeCursors[pageIndex + 1] = snapshot.docs[snapshot.docs.length - 1];
-        }
+        const scores = await this.readFirebaseScores(gameMode);
+        const start = pageIndex * pageSize;
         this.mode = "firebase";
         return {
-          scores,
+          scores: scores.slice(start, start + pageSize),
           pageIndex,
           hasPrevious: pageIndex > 0,
-          hasNext: snapshot.docs.length === queryLimit,
+          hasNext: start + pageSize < scores.length,
         };
       } catch (_error) {
         this.mode = "local-fallback";
@@ -142,7 +140,7 @@ class LeaderboardService {
     const trimmed = entries.slice(0, 500);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(trimmed));
     this.resetPagination();
-    return trimmed;
+    return this.readLocalScores(gameMode).slice(0, LEADERBOARD_PAGE_SIZE);
   }
 
   readLocalScores(gameMode = null) {
@@ -229,6 +227,12 @@ const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
 const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
 const GAME_UPDATES = [
+  {
+    dateTime: "2026-05-20T21:23:00+02:00",
+    displayTime: "May 20, 2026 at 21:23",
+    title: "Hardcore Leaderboard Fix",
+    description: "Hardcore scores now save and display in the hardcore-only leaderboard, even when switching modes during loading.",
+  },
   {
     dateTime: "2026-05-20T20:46:00+02:00",
     displayTime: "May 20, 2026 at 20:46",
@@ -531,6 +535,7 @@ let lastTickTime = null;
 let accumulatedTime = 0;
 let leaderboardPageIndex = 0;
 let leaderboardLoading = false;
+let pendingLeaderboardPageIndex = null;
 let visibleGameUpdateCount = COLLAPSED_UPDATE_COUNT;
 let gameplayFocusTimer = null;
 let pausedBySettings = false;
@@ -622,6 +627,13 @@ function setSetting(name, value) {
   saveSettings();
   applySettings();
   if (name === "hardcore") {
+    const selectedMode = value ? SCORE_MODES.hardcore : SCORE_MODES.normal;
+    if (!state.hasStarted || state.gameOver) {
+      state.runMode = selectedMode;
+    } else if (value) {
+      // A run that enters Hardcore stays in the Hardcore leaderboard bucket.
+      state.runMode = SCORE_MODES.hardcore;
+    }
     leaderboard.resetPagination();
     leaderboardPageIndex = 0;
     renderLeaderboard(0);
@@ -4258,6 +4270,9 @@ function formatScoreTimestamp(createdAt) {
 }
 
 function getVisibleScoreMode() {
+  if (state.hasStarted || state.gameOver || state.awaitingScoreEntry) {
+    return state.runMode;
+  }
   return appSettings.hardcore ? SCORE_MODES.hardcore : SCORE_MODES.normal;
 }
 
@@ -4269,7 +4284,17 @@ async function renderLeaderboard(pageIndex = leaderboardPageIndex) {
   if (!leaderboardList) {
     return;
   }
+
+  const visibleMode = getVisibleScoreMode();
+  const modeLabel = getScoreModeLabel(visibleMode);
+  if (leaderboardTitle) {
+    leaderboardTitle.textContent = `${modeLabel} Leaderboard`;
+  }
   if (leaderboardLoading) {
+    pendingLeaderboardPageIndex = pageIndex;
+    if (leaderboardMode) {
+      leaderboardMode.textContent = `Mode: loading ${modeLabel.toLowerCase()} scores...`;
+    }
     return;
   }
   leaderboardLoading = true;
@@ -4281,12 +4306,6 @@ async function renderLeaderboard(pageIndex = leaderboardPageIndex) {
   }
   if (leaderboardPageLabel) {
     leaderboardPageLabel.textContent = `Loading page ${pageIndex + 1}...`;
-  }
-
-  const visibleMode = getVisibleScoreMode();
-  const modeLabel = getScoreModeLabel(visibleMode);
-  if (leaderboardTitle) {
-    leaderboardTitle.textContent = `${modeLabel} Leaderboard`;
   }
 
   try {
@@ -4335,7 +4354,9 @@ async function renderLeaderboard(pageIndex = leaderboardPageIndex) {
     if (leaderboardPageLabel) {
       leaderboardPageLabel.textContent = `Page ${page.pageIndex + 1}`;
     }
-    leaderboardMode.textContent = `Mode: ${leaderboard.mode} ${modeLabel.toLowerCase()} scores only`;
+    if (leaderboardMode) {
+      leaderboardMode.textContent = `Mode: ${leaderboard.mode} ${modeLabel.toLowerCase()} scores only`;
+    }
   } catch (_error) {
     leaderboardList.innerHTML = "";
     const item = document.createElement("li");
@@ -4353,6 +4374,11 @@ async function renderLeaderboard(pageIndex = leaderboardPageIndex) {
     }
   } finally {
     leaderboardLoading = false;
+    if (pendingLeaderboardPageIndex !== null) {
+      const pendingPage = pendingLeaderboardPageIndex;
+      pendingLeaderboardPageIndex = null;
+      renderLeaderboard(pendingPage);
+    }
   }
 }
 

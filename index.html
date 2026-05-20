@@ -6,31 +6,53 @@
   <meta name="description" content="Horse Jump Web is a browser endless runner with perks, coins, carrots, and online leaderboard support.">
   <meta name="theme-color" content="#dbefff">
   <title>Horse Jump Web</title>
-  <link rel="stylesheet" href="./styles.css?v=20260520-14">
+  <link rel="stylesheet" href="./styles.css?v=20260520-16">
 </head>
 <body>
   <div class="app-shell">
     <main class="layout">
       <section class="game-panel" id="gamePanel">
-        <header class="game-header">
-          <p class="game-header-kicker">Endless Runner</p>
-          <h1>Horse Jump Web</h1>
-          <p class="game-header-subtitle">Jump, collect coins, unlock perks, and survive as long as you can.</p>
+        <header class="game-header hardcore-promo" id="hardcorePromo">
+          <div class="promo-logo-mark" aria-hidden="true">
+            <span class="promo-logo-horse">♞</span>
+            <strong>HORSE<br>JUMP</strong>
+            <small>WEB</small>
+          </div>
+          <div class="hardcore-promo-copy">
+            <p class="game-header-kicker">Neu: Boss Rush</p>
+            <h1>Aktiviere den Hardcore Modus!</h1>
+            <p class="game-header-subtitle">Dino, Crab und Biber warten. Lava, Geister, Carrot Blaster und ein eigener Hardcore-Scoreboard.</p>
+            <div class="promo-perks" aria-hidden="true">
+              <span>🏆 eigene Rangliste</span>
+              <span>⚡ schwerer</span>
+              <span>🔥 Bossfights</span>
+            </div>
+            <p class="hardcore-promo-status" id="hardcorePromoStatus">Schalter rechts: Hardcore schnell aktivieren.</p>
+          </div>
+          <div class="boss-preview" aria-label="Hardcore bosses">
+            <span class="boss-token boss-dino" title="Dinosaur boss">🦖</span>
+            <span class="boss-token boss-crab" title="Crab boss">🦀</span>
+            <span class="boss-token boss-biber" title="Biber boss">🦫</span>
+          </div>
+          <div class="promo-switch-panel">
+            <strong>Wähle deinen Modus</strong>
+            <label class="hardcore-switch" for="hardcoreQuickToggle">
+              <input id="hardcoreQuickToggle" type="checkbox">
+              <span class="mode-label mode-normal">Normal</span>
+              <span class="promo-switch-track" aria-hidden="true">
+                <span class="promo-switch-knob"></span>
+              </span>
+              <span class="mode-label mode-hardcore">Hardcore</span>
+            </label>
+          </div>
         </header>
-
-        <div class="status-bar" aria-live="polite">
-          <div class="status-bar-copy">
-            <strong class="status-bar-title">Horse Jump Web</strong>
-            <p id="statusText">Open the intro and start your run.</p>
-          </div>
-          <div class="status-bar-actions">
-            <button id="pauseButton" class="pause-button" type="button">Pause</button>
-            <button id="settingsButton" class="settings-gear" type="button" aria-label="Open settings" title="Settings">⚙</button>
-          </div>
-        </div>
 
         <div class="game-stage" id="gameStage">
           <div class="playfield" id="playfield">
+            <div class="playfield-controls" aria-label="Quick game controls">
+              <button id="pauseButton" class="pause-button playfield-control-button" type="button">Pause</button>
+              <button id="settingsButton" class="settings-gear playfield-control-button" type="button" aria-label="Open settings" title="Settings">⚙</button>
+            </div>
             <canvas id="gameCanvas" width="960" height="640" aria-label="Horse Jump endless runner game" role="img">
               Horse Jump Web needs a browser with canvas support.
             </canvas>
@@ -187,6 +209,6 @@
   </div>
 
   <button id="restartButton" type="button" hidden>Restart</button>
-  <script src="./game.js?v=20260520-14"></script>
+  <script src="./game.js?v=20260520-16"></script>
 </body>
 </html>

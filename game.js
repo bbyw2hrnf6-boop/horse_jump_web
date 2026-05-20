@@ -198,7 +198,9 @@ const settingsOverlay = document.getElementById("settingsOverlay");
 const closeSettingsButton = document.getElementById("closeSettingsButton");
 const darkModeToggle = document.getElementById("darkModeToggle");
 const hardcoreToggle = document.getElementById("hardcoreToggle");
+const hardcoreQuickToggle = document.getElementById("hardcoreQuickToggle");
 const soundToggle = document.getElementById("soundToggle");
+const hardcorePromoStatus = document.getElementById("hardcorePromoStatus");
 const perkButtons = [...document.querySelectorAll(".perk-button")];
 
 const leaderboard = new LeaderboardService();
@@ -227,6 +229,18 @@ const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
 const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
 const GAME_UPDATES = [
+  {
+    dateTime: "2026-05-20T20:46:00+02:00",
+    displayTime: "May 20, 2026 at 20:46",
+    title: "Hardcore Banner And Spooky Mode",
+    description: "The top banner now promotes Hardcore Mode with a quick toggle, and hardcore runs use darker lava-and-ghost scenery.",
+  },
+  {
+    dateTime: "2026-05-20T20:39:00+02:00",
+    displayTime: "May 20, 2026 at 20:39",
+    title: "Hardcore Promo Banner",
+    description: "The top banner now promotes Hardcore Mode with boss badges, carrot-weapon hype, and a live hardcore status.",
+  },
   {
     dateTime: "2026-05-20T20:33:00+02:00",
     displayTime: "May 20, 2026 at 20:33",
@@ -581,11 +595,18 @@ function saveSettings() {
 function syncSettingsControls() {
   if (darkModeToggle) darkModeToggle.checked = appSettings.darkMode;
   if (hardcoreToggle) hardcoreToggle.checked = appSettings.hardcore;
+  if (hardcoreQuickToggle) hardcoreQuickToggle.checked = appSettings.hardcore;
   if (soundToggle) soundToggle.checked = appSettings.sound;
 }
 
 function applySettings() {
   document.body.classList.toggle("dark-mode", appSettings.darkMode);
+  document.body.classList.toggle("hardcore-active", appSettings.hardcore);
+  if (hardcorePromoStatus) {
+    hardcorePromoStatus.textContent = appSettings.hardcore
+      ? "Hardcore ist AN: Lava, Geister, Bossfights und Hardcore-Rangliste."
+      : "Schalter rechts: Hardcore schnell aktivieren.";
+  }
   if (!appSettings.sound) {
     stopAreaMusic();
     audioState.started = false;
@@ -1118,6 +1139,39 @@ function getAreaTheme() {
       accent: "#c45730",
     },
   ];
+  const hardcoreThemes = [
+    {
+      season: "hardcore",
+      sky: "#100611",
+      skyMid: "#281225",
+      skyBottom: "#4d160f",
+      ground: "#31110b",
+      ground2: "#5a160c",
+      ground3: "#130606",
+      far: "rgba(71, 30, 62, 0.88)",
+      mid: "rgba(91, 28, 20, 0.84)",
+      near: "rgba(23, 9, 12, 0.78)",
+      tree: "rgba(20, 10, 11, 0.86)",
+      accent: "#ff6a1a",
+    },
+    {
+      season: "hardcore",
+      sky: "#080813",
+      skyMid: "#171a35",
+      skyBottom: "#3b152d",
+      ground: "#24100f",
+      ground2: "#44130e",
+      ground3: "#0b0505",
+      far: "rgba(45, 37, 78, 0.86)",
+      mid: "rgba(74, 31, 58, 0.8)",
+      near: "rgba(18, 12, 25, 0.82)",
+      tree: "rgba(9, 8, 13, 0.88)",
+      accent: "#f97316",
+    },
+  ];
+  if (appSettings.hardcore) {
+    return hardcoreThemes[state.area % hardcoreThemes.length];
+  }
   const themes = appSettings.darkMode ? darkThemes : lightThemes;
   return themes[state.area % themes.length];
 }
@@ -3433,7 +3487,21 @@ function drawRollingHills(theme) {
   ctx.fillStyle = skyGlow;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-  if (theme.season === "summer") {
+  if (theme.season === "hardcore") {
+    const pulse = 0.5 + Math.sin(state.frame * 0.035) * 0.18;
+    ctx.fillStyle = `rgba(255, 88, 24, ${0.18 + pulse * 0.12})`;
+    ctx.beginPath();
+    ctx.arc(WIDTH - 128, 92, 58, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(235, 221, 197, 0.86)";
+    ctx.beginPath();
+    ctx.arc(WIDTH - 132, 88, 34, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(16, 6, 17, 0.48)";
+    ctx.beginPath();
+    ctx.arc(WIDTH - 118, 78, 32, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (theme.season === "summer") {
     ctx.fillStyle = appSettings.darkMode ? "rgba(232, 164, 65, 0.24)" : "rgba(255, 214, 104, 0.38)";
     ctx.beginPath();
     ctx.arc(WIDTH - 120, 88, 56, 0, Math.PI * 2);
@@ -3528,7 +3596,23 @@ function drawRollingHills(theme) {
       const treeH = 42 + (index % 3) * 16;
       ctx.fillRect(treeX, treeBase - treeH * 0.45, 6, treeH * 0.45);
       ctx.beginPath();
-      if (theme.season === "autumn") {
+      if (theme.season === "hardcore") {
+        ctx.strokeStyle = "rgba(13, 7, 8, 0.9)";
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(treeX, treeBase);
+        ctx.quadraticCurveTo(treeX - 8, treeBase - treeH * 0.58, treeX + 3, treeBase - treeH);
+        ctx.moveTo(treeX - 2, treeBase - treeH * 0.52);
+        ctx.lineTo(treeX - 26, treeBase - treeH * 0.72);
+        ctx.moveTo(treeX + 1, treeBase - treeH * 0.66);
+        ctx.lineTo(treeX + 28, treeBase - treeH * 0.86);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(255, 105, 35, 0.28)";
+        ctx.beginPath();
+        ctx.arc(treeX + 3, treeBase - treeH * 0.18, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = theme.tree;
+      } else if (theme.season === "autumn") {
         ctx.fillStyle = index % 2 === 0 ? "rgba(190, 91, 38, 0.68)" : "rgba(214, 144, 54, 0.68)";
         ctx.ellipse(treeX + 3, treeBase - treeH * 0.8, 28, 22, 0, 0, Math.PI * 2);
         ctx.ellipse(treeX - 12, treeBase - treeH * 0.58, 20, 18, 0, 0, Math.PI * 2);
@@ -3582,7 +3666,25 @@ function drawRollingHills(theme) {
     }
   }
 
-  if (theme.season === "winter") {
+  if (theme.season === "hardcore") {
+    const lavaShift = -(state.scrollDistance * 0.08) % 320;
+    for (let x = lavaShift - 320; x < WIDTH + 320; x += 320) {
+      ctx.fillStyle = "rgba(17, 7, 9, 0.88)";
+      ctx.beginPath();
+      ctx.moveTo(x + 40, GROUND_Y);
+      ctx.lineTo(x + 136, GROUND_Y - 150);
+      ctx.lineTo(x + 236, GROUND_Y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "rgba(255, 82, 18, 0.74)";
+      ctx.beginPath();
+      ctx.moveTo(x + 128, GROUND_Y - 118);
+      ctx.lineTo(x + 146, GROUND_Y - 148);
+      ctx.lineTo(x + 162, GROUND_Y - 116);
+      ctx.quadraticCurveTo(x + 148, GROUND_Y - 98, x + 128, GROUND_Y - 118);
+      ctx.fill();
+    }
+  } else if (theme.season === "winter") {
     const liftShift = -(state.scrollDistance * 0.09) % 180;
     ctx.strokeStyle = appSettings.darkMode ? "rgba(216, 242, 255, 0.42)" : "rgba(72, 103, 125, 0.46)";
     ctx.lineWidth = 2;
@@ -3632,6 +3734,41 @@ function drawRollingHills(theme) {
 }
 
 function drawSeasonAtmosphere(theme) {
+  if (theme.season === "hardcore") {
+    for (let index = 0; index < 18; index += 1) {
+      const x = (index * 74 - state.scrollDistance * 0.42) % (WIDTH + 90);
+      const y = 62 + ((index * 41 + state.frame * 0.72) % Math.max(170, GROUND_Y - 96));
+      const drawX = x < -30 ? x + WIDTH + 90 : x;
+      ctx.fillStyle = index % 3 === 0 ? "rgba(255, 107, 30, 0.55)" : "rgba(255, 194, 87, 0.34)";
+      ctx.beginPath();
+      ctx.ellipse(drawX, y, 2.4, 5.8, Math.sin(state.frame * 0.04 + index), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    for (let index = 0; index < 5; index += 1) {
+      const x = (index * 210 + 90 - state.scrollDistance * 0.18) % (WIDTH + 160);
+      const y = 118 + Math.sin(state.frame * 0.035 + index) * 16 + index * 22;
+      const drawX = x < -70 ? x + WIDTH + 160 : x;
+      ctx.save();
+      ctx.globalAlpha = 0.34;
+      ctx.fillStyle = "#f8fbff";
+      ctx.beginPath();
+      ctx.arc(drawX, y, 15, Math.PI, 0);
+      ctx.lineTo(drawX + 15, y + 24);
+      ctx.quadraticCurveTo(drawX + 8, y + 18, drawX + 2, y + 24);
+      ctx.quadraticCurveTo(drawX - 5, y + 18, drawX - 12, y + 24);
+      ctx.lineTo(drawX - 15, y);
+      ctx.fill();
+      ctx.fillStyle = "rgba(18, 8, 16, 0.78)";
+      ctx.beginPath();
+      ctx.arc(drawX - 5, y - 1, 2, 0, Math.PI * 2);
+      ctx.arc(drawX + 5, y - 1, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    return;
+  }
+
   if (theme.season === "winter") {
     ctx.fillStyle = appSettings.darkMode ? "rgba(230, 246, 255, 0.72)" : "rgba(255, 255, 255, 0.9)";
     for (let index = 0; index < 42; index += 1) {
@@ -3702,6 +3839,41 @@ function drawGroundTexture(theme) {
   ctx.fillRect(0, GROUND_Y, WIDTH, HEIGHT - GROUND_Y);
 
   const offset = -(state.scrollDistance * 0.55) % 42;
+
+  if (theme.season === "hardcore") {
+    const lavaOffset = -(state.scrollDistance * 0.9) % 110;
+    ctx.fillStyle = "rgba(255, 88, 24, 0.3)";
+    ctx.beginPath();
+    ctx.moveTo(0, GROUND_Y + 10);
+    for (let x = 0; x <= WIDTH + 80; x += 80) {
+      ctx.quadraticCurveTo(x + 36, GROUND_Y + 4 + Math.sin((state.frame + x) * 0.025) * 8, x + 80, GROUND_Y + 12);
+    }
+    ctx.lineTo(WIDTH, HEIGHT);
+    ctx.lineTo(0, HEIGHT);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(255, 122, 24, 0.82)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let x = lavaOffset - 110; x < WIDTH + 120; x += 110) {
+      const y = GROUND_Y + 28 + ((Math.floor(x / 110) % 4) * 26);
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + 22, y + 8);
+      ctx.lineTo(x + 44, y - 5);
+      ctx.lineTo(x + 70, y + 6);
+      ctx.lineTo(x + 106, y - 2);
+    }
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(255, 177, 58, 0.55)";
+    for (let x = lavaOffset - 60; x < WIDTH + 120; x += 86) {
+      ctx.beginPath();
+      ctx.ellipse(x, GROUND_Y + 82 + (x % 4) * 10, 20, 5, -0.15, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return;
+  }
 
   if (theme.season === "winter") {
     ctx.fillStyle = appSettings.darkMode ? "rgba(229, 244, 255, 0.17)" : "rgba(255, 255, 255, 0.5)";
@@ -4506,6 +4678,13 @@ if (darkModeToggle) {
 if (hardcoreToggle) {
   hardcoreToggle.addEventListener("change", () => {
     setSetting("hardcore", hardcoreToggle.checked);
+  });
+}
+
+if (hardcoreQuickToggle) {
+  hardcoreQuickToggle.addEventListener("change", () => {
+    unlockAudio();
+    setSetting("hardcore", hardcoreQuickToggle.checked);
   });
 }
 

@@ -194,6 +194,12 @@ const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
 const GAME_UPDATES = [
   {
+    dateTime: "2026-05-20T15:48:00+02:00",
+    displayTime: "May 20, 2026 at 15:48",
+    title: "Tiny Mobile Intro",
+    description: "The phone landscape start popup is now much smaller, with only the essentials and a quick start button.",
+  },
+  {
     dateTime: "2026-05-20T15:34:00+02:00",
     displayTime: "May 20, 2026 at 15:34",
     title: "Phone Landscape Start Fix",

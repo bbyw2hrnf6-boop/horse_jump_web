@@ -59,6 +59,30 @@ h2, p {
   min-width: 0;
 }
 
+.game-header {
+  margin: 4px 4px 12px;
+}
+
+.game-header-kicker {
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.game-header h1 {
+  margin: 4px 0 6px;
+  font-size: clamp(1.8rem, 3.4vw, 3rem);
+  line-height: 1;
+}
+
+.game-header-subtitle {
+  color: var(--muted);
+  font-size: 0.98rem;
+  line-height: 1.35;
+}
+
 .game-stage {
   position: relative;
   min-width: 0;

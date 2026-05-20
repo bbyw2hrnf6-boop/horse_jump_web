@@ -194,6 +194,12 @@ const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
 const GAME_UPDATES = [
   {
+    dateTime: "2026-05-20T15:34:00+02:00",
+    displayTime: "May 20, 2026 at 15:34",
+    title: "Phone Landscape Start Fix",
+    description: "Landscape phones now open directly on the centered playfield, with the intro popup visible inside the game area.",
+  },
+  {
     dateTime: "2026-05-20T15:08:00+02:00",
     displayTime: "May 20, 2026 at 15:08",
     title: "Landscape Mobile Focus",
@@ -378,9 +384,7 @@ function focusGameplayArea(immediate = false) {
     return;
   }
 
-  const target = introOverlay && !introOverlay.hidden
-    ? introOverlay
-    : (playfield || gameStage || gamePanel);
+  const target = playfield || gameStage || gamePanel;
 
   if (!target) {
     return;
@@ -392,10 +396,11 @@ function focusGameplayArea(immediate = false) {
   }
 
   const scrollAction = () => {
-    const panelTop = (gamePanel || target).getBoundingClientRect().top + window.scrollY;
+    const targetBox = target.getBoundingClientRect();
+    const targetTop = targetBox.top + window.scrollY;
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
-    const targetHeight = target.getBoundingClientRect().height || 0;
-    const idealTop = Math.max(0, panelTop - Math.max(6, (viewportHeight - targetHeight) * 0.22));
+    const targetHeight = targetBox.height || 0;
+    const idealTop = Math.max(0, targetTop - Math.max(0, (viewportHeight - targetHeight) / 2));
     window.scrollTo({ top: idealTop, behavior: immediate ? "auto" : "smooth" });
   };
 
@@ -404,6 +409,12 @@ function focusGameplayArea(immediate = false) {
   } else {
     gameplayFocusTimer = window.setTimeout(scrollAction, 120);
   }
+}
+
+function refocusGameplayAfterViewportChange() {
+  focusGameplayArea(true);
+  window.setTimeout(() => focusGameplayArea(true), 120);
+  window.setTimeout(() => focusGameplayArea(true), 360);
 }
 
 function ensureAudioReady() {
@@ -2666,25 +2677,25 @@ if (overlayRestartButton) {
 }
 
 window.addEventListener("load", () => {
-  focusGameplayArea(true);
+  refocusGameplayAfterViewportChange();
 });
 
 window.addEventListener("resize", () => {
-  focusGameplayArea();
+  refocusGameplayAfterViewportChange();
 });
 
 if (typeof mobileLandscapeQuery.addEventListener === "function") {
   mobileLandscapeQuery.addEventListener("change", () => {
-    focusGameplayArea();
+    refocusGameplayAfterViewportChange();
   });
 } else if (typeof mobileLandscapeQuery.addListener === "function") {
   mobileLandscapeQuery.addListener(() => {
-    focusGameplayArea();
+    refocusGameplayAfterViewportChange();
   });
 }
 
 renderGameUpdates();
 renderLeaderboard();
 syncHud();
-focusGameplayArea(true);
+refocusGameplayAfterViewportChange();
 tick();

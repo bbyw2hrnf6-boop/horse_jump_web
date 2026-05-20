@@ -805,59 +805,111 @@ input:focus-visible {
 }
 
 @media (max-width: 980px) and (orientation: landscape) {
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    scroll-behavior: auto;
+  }
+
   .app-shell {
     width: 100%;
     max-width: 100%;
-    padding: 6px;
-  }
-
-  html,
-  body {
-    scroll-behavior: smooth;
+    height: 100dvh;
+    padding: 0;
   }
 
   .layout {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .game-panel {
+    display: grid;
     width: 100%;
-    max-width: 100%;
-    margin: 0 auto;
+    height: 100dvh;
+    grid-template-columns: 1fr;
+    place-items: center;
+    gap: 0;
   }
 
   .game-header,
-  .status-bar {
-    max-width: min(100%, 960px);
-    margin-left: auto;
-    margin-right: auto;
+  .status-bar,
+  .side-panel {
+    display: none;
+  }
+
+  .game-panel {
+    display: grid;
+    width: 100%;
+    max-width: 100%;
+    height: 100dvh;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    place-items: center;
   }
 
   .game-stage {
-    display: flex;
-    justify-content: center;
-    width: 100%;
+    display: grid;
+    width: 100vw;
+    height: 100dvh;
+    overflow: hidden;
+    place-items: center;
   }
 
   .playfield {
-    width: min(100%, calc((100dvh - 180px) * 1.5));
-    max-width: 100%;
+    width: min(100vw, 150dvh);
+    height: min(100dvh, 66.67vw);
+    max-width: 100vw;
+    max-height: 100dvh;
     margin: 0 auto;
-    scroll-margin-top: 8px;
+    border-radius: 0;
+    scroll-margin-top: 0;
   }
 
   canvas {
     width: 100%;
-    height: auto;
+    height: 100%;
     margin: 0 auto;
   }
 
-  .side-panel {
-    width: 100%;
-    max-width: min(100%, 960px);
-    margin: 0 auto;
+  .playfield-overlay,
+  .game-over-overlay {
+    align-items: center;
+    padding: 8px;
+  }
+
+  .playfield-dialog,
+  .game-over-dialog {
+    width: min(560px, calc(100vw - 20px));
+    max-height: calc(100dvh - 20px);
+    padding: 12px;
+    overflow: auto;
+    border-width: 3px;
+    border-radius: 14px;
+  }
+
+  .playfield-dialog h2,
+  .game-over-dialog h2 {
+    font-size: 1.35rem;
+  }
+
+  .dialog-copy,
+  .dialog-grid p {
+    font-size: 0.82rem;
+    line-height: 1.28;
+  }
+
+  .dialog-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .dialog-grid div {
+    padding: 8px;
+  }
+
+  .playfield-dialog-actions {
+    margin-top: 10px;
   }
 }

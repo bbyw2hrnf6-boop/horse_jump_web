@@ -207,6 +207,12 @@ const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
 const GAME_UPDATES = [
   {
+    dateTime: "2026-05-20T18:05:00+02:00",
+    displayTime: "May 20, 2026 at 18:05",
+    title: "Moving Bosses And Weapon Pickups",
+    description: "Boss fights now have more boss life, active boss movement, and collectible temporary weapons like triple shot, laser carrots, and mega carrots.",
+  },
+  {
     dateTime: "2026-05-20T17:42:00+02:00",
     displayTime: "May 20, 2026 at 17:42",
     title: "Hardcore Boss Arenas",
@@ -325,11 +331,17 @@ const DEFAULT_HORSE_X = 150;
 const BOSS_ARENA_MIN_X = 70;
 const BOSS_ARENA_MAX_X = 430;
 const BOSS_FIGHT_LIVES = 3;
+const BOSS_WEAPON_DURATION = 8 * 60;
+const BOSS_WEAPON_TYPES = [
+  { kind: "bossSpread", label: "Triple Carrot", color: "#38bdf8" },
+  { kind: "bossLaser", label: "Laser Carrot", color: "#f97316" },
+  { kind: "bossMega", label: "Mega Carrot", color: "#a855f7" },
+];
 const BOSS_TYPES = [
   {
     type: "dinosaur",
     label: "Dinosaur",
-    hp: 32,
+    hp: 58,
     width: 188,
     height: 116,
     y: 122,
@@ -338,7 +350,7 @@ const BOSS_TYPES = [
   {
     type: "crab",
     label: "Crab",
-    hp: 38,
+    hp: 72,
     width: 178,
     height: 102,
     y: 152,
@@ -347,7 +359,7 @@ const BOSS_TYPES = [
   {
     type: "biber",
     label: "Biber",
-    hp: 44,
+    hp: 86,
     width: 184,
     height: 108,
     y: 138,
@@ -417,6 +429,9 @@ const state = {
   bossLives: 0,
   bossHitGraceUntil: 0,
   bossAttacks: [],
+  bossPickupTimer: 180,
+  bossWeapon: null,
+  bossWeaponUntil: 0,
   bossTimer: 1250,
   bossAttackTimer: 90,
   flyingTimer: 260,
@@ -565,6 +580,8 @@ function setSetting(name, value) {
       state.flyingEnemies = [];
       state.boss = null;
       state.bossAttacks = [];
+      state.bossWeapon = null;
+      state.bossWeaponUntil = 0;
       state.bossLives = 0;
     }
   }
@@ -871,6 +888,9 @@ function resetGame() {
   state.bossLives = 0;
   state.bossHitGraceUntil = 0;
   state.bossAttacks = [];
+  state.bossPickupTimer = 180;
+  state.bossWeapon = null;
+  state.bossWeaponUntil = 0;
   state.bossTimer = 1250;
   state.bossAttackTimer = 90;
   state.flyingTimer = 260;
@@ -1069,6 +1089,9 @@ function getAreaTheme() {
 }
 
 function getActivePerk() {
+  if (state.bossWeapon && state.bossWeaponUntil > state.frame) {
+    return `${state.bossWeapon.label} ${Math.ceil((state.bossWeaponUntil - state.frame) / 60)}s`;
+  }
   if (state.boss) return `Boss ${state.bossLives}/${BOSS_FIGHT_LIVES}`;
   if (state.bullUntil > state.frame) return `Friday Bull ${Math.ceil((state.bullUntil - state.frame) / 60)}s`;
   if (state.rottenBoostUntil > state.frame) return `Turbo Apple ${Math.ceil((state.rottenBoostUntil - state.frame) / 60)}s`;
@@ -1263,6 +1286,9 @@ function spawnBoss() {
   state.bossLives = BOSS_FIGHT_LIVES;
   state.bossHitGraceUntil = state.frame + 90;
   state.bossAttackTimer = 95;
+  state.bossPickupTimer = 150;
+  state.bossWeapon = null;
+  state.bossWeaponUntil = 0;
   state.horse.x = DEFAULT_HORSE_X;
   state.horse.vy = Math.min(state.horse.vy, 0);
   state.boss = {
@@ -1275,6 +1301,10 @@ function spawnBoss() {
     type: bossType.type,
     label: bossType.label,
     palette: bossType.palette,
+    baseY: bossType.y,
+    targetX: WIDTH - 260,
+    targetY: bossType.y,
+    moveTimer: 80,
     phase: Math.random() * Math.PI * 2,
   };
   state.status = `${bossType.label} boss fight. 3 hearts, unlimited carrot blaster, move with A/D or arrows.`;
@@ -1324,6 +1354,29 @@ function spawnBossAttack() {
   state.bossAttacks.push(baseAttack);
 }
 
+function spawnBossWeaponPickup() {
+  if (!state.boss) {
+    return;
+  }
+  const weapon = BOSS_WEAPON_TYPES[Math.floor(Math.random() * BOSS_WEAPON_TYPES.length)];
+  state.pickups.push({
+    x: WIDTH - 260 - Math.random() * 180,
+    y: 160 + Math.random() * Math.max(120, GROUND_Y - 300),
+    size: 18,
+    pulse: Math.random() * Math.PI * 2,
+    kind: weapon.kind,
+    weapon,
+  });
+}
+
+function activateBossWeapon(weapon) {
+  state.bossWeapon = weapon;
+  state.bossWeaponUntil = state.frame + BOSS_WEAPON_DURATION;
+  state.status = `${weapon.label} active for 8 seconds.`;
+  spawnCelebrationBurst(state.horse.x + 100, state.horse.y - 90, [weapon.color, "#ffffff", "#ffd54f"]);
+  playPerkSound();
+}
+
 function finishBossFight() {
   if (!state.boss) {
     return;
@@ -1336,6 +1389,9 @@ function finishBossFight() {
   state.bossAttacks = [];
   state.bossLives = 0;
   state.bossHitGraceUntil = 0;
+  state.bossPickupTimer = 180;
+  state.bossWeapon = null;
+  state.bossWeaponUntil = 0;
   state.horse.x = DEFAULT_HORSE_X;
   state.spawnTimer = 105;
   state.flyingTimer = 300;
@@ -1610,17 +1666,30 @@ function updateWorld() {
 
   if (state.boss) {
     state.boss.phase += 0.08;
-    state.boss.x += Math.max(-4.8, (WIDTH - 260 - state.boss.x) * 0.05);
-    state.boss.y = state.boss.type === "crab"
-      ? 160 + Math.sin(state.boss.phase) * 14
-      : state.boss.type === "biber"
-        ? 138 + Math.sin(state.boss.phase) * 18
-        : 118 + Math.sin(state.boss.phase) * 24;
+    state.boss.moveTimer -= 1;
+    if (state.boss.moveTimer <= 0) {
+      const dangerPush = state.horse.x > 300 ? 80 : 0;
+      state.boss.targetX = WIDTH - 340 - Math.random() * 190 - dangerPush;
+      state.boss.targetY = state.boss.baseY + (Math.random() - 0.5) * (state.boss.type === "crab" ? 76 : 118);
+      state.boss.moveTimer = 70 + Math.random() * 85;
+    }
+    const minBossX = WIDTH - 560;
+    const maxBossX = WIDTH - state.boss.width - 40;
+    const minBossY = 82;
+    const maxBossY = Math.max(minBossY + 20, GROUND_Y - state.boss.height - 26);
+    const bob = Math.sin(state.boss.phase) * (state.boss.type === "crab" ? 8 : 14);
+    state.boss.x += (Math.max(minBossX, Math.min(maxBossX, state.boss.targetX)) - state.boss.x) * 0.045;
+    state.boss.y += (Math.max(minBossY, Math.min(maxBossY, state.boss.targetY + bob)) - state.boss.y) * 0.06;
     state.bossAttackTimer -= 1;
     if (state.bossAttackTimer <= 0) {
       spawnBossAttack();
       const pressure = Math.min(20, state.bossFightCount * 3);
       state.bossAttackTimer = Math.max(46, 82 - pressure + Math.random() * 38);
+    }
+    state.bossPickupTimer -= 1;
+    if (state.bossPickupTimer <= 0) {
+      spawnBossWeaponPickup();
+      state.bossPickupTimer = 430 + Math.random() * 260;
     }
   }
 
@@ -1654,13 +1723,21 @@ function updateWorld() {
   state.coinsInWorld = state.coinsInWorld.filter((coin) => coin.x > -30);
 
   for (const pickup of state.pickups) {
-    pickup.x -= state.worldSpeed;
+    if (pickup.kind?.startsWith("boss")) {
+      pickup.x += Math.sin(state.frame * 0.04 + pickup.pulse) * 0.5;
+      pickup.y += Math.cos(state.frame * 0.035 + pickup.pulse) * 0.35;
+    } else {
+      pickup.x -= state.worldSpeed;
+    }
     pickup.pulse += 0.12;
   }
   if (hasAnyActivePerk()) {
     state.pickups = state.pickups.filter((pickup) => pickup.kind !== "apple" && pickup.kind !== "rotten" && pickup.kind !== "meat");
   }
   state.pickups = state.pickups.filter((pickup) => pickup.x > -40);
+  if (state.bossWeapon && state.bossWeaponUntil <= state.frame) {
+    state.bossWeapon = null;
+  }
 
   for (const burst of state.celebrationBursts) {
     burst.x += burst.vx;
@@ -1677,15 +1754,24 @@ function updateWorld() {
     const targetX = target ? target.x + target.width / 2 : WIDTH;
     const targetY = target ? target.y + target.height / 2 : shotY;
     const distance = Math.max(1, Math.hypot(targetX - shotX, targetY - shotY));
-    const speed = state.boss ? 17.5 : 15;
-    state.projectiles.push({
-      x: shotX,
-      y: shotY,
-      vx: ((targetX - shotX) / distance) * speed,
-      vy: ((targetY - shotY) / distance) * speed,
-      size: 7,
-    });
-    state.nextShotFrame = state.frame + (state.boss ? 11 : 10);
+    const activeWeapon = state.bossWeaponUntil > state.frame ? state.bossWeapon : null;
+    const speed = activeWeapon?.kind === "bossLaser" ? 25 : (state.boss ? 17.5 : 15);
+    const baseVx = ((targetX - shotX) / distance) * speed;
+    const baseVy = ((targetY - shotY) / distance) * speed;
+    const shots = activeWeapon?.kind === "bossSpread" ? [-0.18, 0, 0.18] : [0];
+    for (const angleOffset of shots) {
+      const angle = Math.atan2(baseVy, baseVx) + angleOffset;
+      state.projectiles.push({
+        x: shotX,
+        y: shotY,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: activeWeapon?.kind === "bossMega" ? 11 : (activeWeapon?.kind === "bossLaser" ? 5 : 7),
+        damage: activeWeapon?.kind === "bossMega" ? 4 : (activeWeapon?.kind === "bossLaser" ? 2 : 1),
+        kind: activeWeapon?.kind || "carrot",
+      });
+    }
+    state.nextShotFrame = state.frame + (state.boss ? (activeWeapon?.kind === "bossLaser" ? 5 : 11) : 10);
     playBlasterSound();
   }
 
@@ -1731,7 +1817,10 @@ function checkCollisions() {
     );
     if (overlap) {
       state.pickups.splice(state.pickups.indexOf(pickup), 1);
-      if (pickup.kind === "meat") {
+      if (pickup.kind?.startsWith("boss")) {
+        activateBossWeapon(pickup.weapon);
+        state.score += 60;
+      } else if (pickup.kind === "meat") {
         activateBullPower();
         state.score += 150;
       } else if (pickup.kind === "rotten") {
@@ -1756,8 +1845,9 @@ function checkCollisions() {
       );
       if (bossHit) {
         state.projectiles.splice(state.projectiles.indexOf(projectile), 1);
-        state.boss.hp -= 1;
-        state.score += 45;
+        const damage = projectile.damage || 1;
+        state.boss.hp -= damage;
+        state.score += 35 * damage;
         spawnCelebrationBurst(projectile.x, projectile.y, ["#ff7043", "#ffd54f", "#66d2a7"]);
         playSmashSound();
         if (state.boss.hp <= 0) {
@@ -2195,7 +2285,10 @@ function drawBossFightHud() {
   ctx.textAlign = "center";
   ctx.fillText(`${state.boss.label} Boss Fight`, WIDTH / 2, 44);
   ctx.font = "15px Trebuchet MS";
-  ctx.fillText("A/D or arrows to dodge. Auto carrot blaster is active.", WIDTH / 2, 68);
+  const weaponText = state.bossWeapon && state.bossWeaponUntil > state.frame
+    ? `${state.bossWeapon.label}: ${Math.ceil((state.bossWeaponUntil - state.frame) / 60)}s`
+    : "Grab weapon pickups for stronger shots.";
+  ctx.fillText(`A/D or arrows to dodge. ${weaponText}`, WIDTH / 2, 68);
   ctx.textAlign = "left";
   for (let index = 0; index < BOSS_FIGHT_LIVES; index += 1) {
     ctx.fillStyle = index < state.bossLives ? "#ef4444" : "rgba(90,70,58,0.22)";
@@ -3147,9 +3240,10 @@ function drawPickup(pickup) {
   const glow = 1 + Math.sin(pickup.pulse) * 0.12;
   const isMeat = pickup.kind === "meat";
   const isRotten = pickup.kind === "rotten";
+  const isBossWeapon = pickup.kind?.startsWith("boss");
   ctx.fillStyle = isMeat
     ? "rgba(255, 170, 120, 0.35)"
-    : (isRotten ? "rgba(176, 210, 126, 0.35)" : "rgba(255, 214, 190, 0.35)");
+    : (isBossWeapon ? `${pickup.weapon.color}33` : (isRotten ? "rgba(176, 210, 126, 0.35)" : "rgba(255, 214, 190, 0.35)"));
   ctx.beginPath();
   ctx.arc(pickup.x, pickup.y, pickup.size * 1.35 * glow, 0, Math.PI * 2);
   ctx.fill();
@@ -3157,13 +3251,47 @@ function drawPickup(pickup) {
   if (isMeat) {
     ctx.fillStyle = "#b14b39";
     ctx.strokeStyle = "#6f2418";
+  } else if (isBossWeapon) {
+    ctx.fillStyle = pickup.weapon.color;
+    ctx.strokeStyle = "#332011";
   } else {
     ctx.fillStyle = isRotten ? "#8fb14a" : "#df3939";
     ctx.strokeStyle = isRotten ? "#536d23" : "#9b1f1f";
   }
   ctx.lineWidth = 2;
   ctx.beginPath();
-  if (!isMeat) {
+  if (isBossWeapon) {
+    ctx.save();
+    ctx.translate(pickup.x, pickup.y);
+    ctx.rotate(Math.sin(pickup.pulse) * 0.22);
+    ctx.beginPath();
+    ctx.roundRect(-pickup.size * 1.05, -pickup.size * 0.58, pickup.size * 2.1, pickup.size * 1.16, 8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#fef3c7";
+    ctx.beginPath();
+    if (pickup.kind === "bossSpread") {
+      ctx.moveTo(-5, -8);
+      ctx.lineTo(12, -2);
+      ctx.lineTo(-5, 4);
+      ctx.moveTo(-8, 0);
+      ctx.lineTo(10, 0);
+      ctx.moveTo(-5, 8);
+      ctx.lineTo(12, 2);
+    } else if (pickup.kind === "bossLaser") {
+      ctx.moveTo(-12, 0);
+      ctx.lineTo(14, 0);
+      ctx.moveTo(6, -7);
+      ctx.lineTo(14, 0);
+      ctx.lineTo(6, 7);
+    } else {
+      ctx.arc(0, 0, 8, 0, Math.PI * 2);
+    }
+    ctx.strokeStyle = "#fef3c7";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.restore();
+  } else if (!isMeat) {
     ctx.arc(pickup.x, pickup.y, pickup.size, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
@@ -3185,7 +3313,7 @@ function drawPickup(pickup) {
     ctx.fill();
   }
 
-  if (!isMeat) {
+  if (!isMeat && !isBossWeapon) {
     ctx.fillStyle = "#5f8d34";
     ctx.fillRect(pickup.x - 2, pickup.y - pickup.size - 6, 4, 8);
     ctx.beginPath();
@@ -3216,7 +3344,12 @@ function drawProjectile(projectile) {
   ctx.translate(projectile.x, projectile.y);
   ctx.rotate(angle);
 
-  ctx.fillStyle = "#f28c28";
+  if (projectile.kind === "bossLaser") {
+    ctx.fillStyle = "rgba(249, 115, 22, 0.35)";
+    ctx.fillRect(-length * 1.2, -radius * 0.45, length * 1.9, radius * 0.9);
+  }
+
+  ctx.fillStyle = projectile.kind === "bossMega" ? "#a855f7" : (projectile.kind === "bossLaser" ? "#fb923c" : "#f28c28");
   ctx.beginPath();
   ctx.moveTo(length * 0.58, 0);
   ctx.quadraticCurveTo(-length * 0.08, -radius, -length * 0.62, -radius * 0.46);
@@ -3224,7 +3357,7 @@ function drawProjectile(projectile) {
   ctx.quadraticCurveTo(-length * 0.08, radius, length * 0.58, 0);
   ctx.fill();
 
-  ctx.strokeStyle = "#b75719";
+  ctx.strokeStyle = projectile.kind === "bossMega" ? "#5b21b6" : "#b75719";
   ctx.lineWidth = 1.6;
   ctx.beginPath();
   ctx.moveTo(-length * 0.36, -radius * 0.48);

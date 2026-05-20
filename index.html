@@ -6,7 +6,7 @@
   <meta name="description" content="Horse Jump Web is a browser endless runner with perks, coins, carrots, and online leaderboard support.">
   <meta name="theme-color" content="#dbefff">
   <title>Horse Jump Web</title>
-  <link rel="stylesheet" href="./styles.css?v=20260520-1">
+  <link rel="stylesheet" href="./styles.css?v=20260520-3">
 </head>
 <body>
   <div class="app-shell">
@@ -19,8 +19,13 @@
         </header>
 
         <div class="status-bar" aria-live="polite">
-          <strong class="status-bar-title">Horse Jump Web</strong>
-          <p id="statusText">Press Space or tap to jump.</p>
+          <div class="status-bar-copy">
+            <strong class="status-bar-title">Horse Jump Web</strong>
+            <p id="statusText">Open the intro and start your run.</p>
+          </div>
+          <div class="status-bar-actions">
+            <button id="pauseButton" class="pause-button" type="button">Pause</button>
+          </div>
         </div>
 
         <div class="game-stage">
@@ -28,6 +33,42 @@
             <canvas id="gameCanvas" width="960" height="640" aria-label="Horse Jump endless runner game" role="img">
               Horse Jump Web needs a browser with canvas support.
             </canvas>
+
+            <section class="playfield-overlay intro-overlay" id="introOverlay">
+              <div class="playfield-dialog">
+                <p class="dialog-kicker">How To Play</p>
+                <h2>Welcome to Horse Jump Web</h2>
+                <p class="dialog-copy">Stay alive as long as you can by jumping over obstacles, collecting coins, and choosing the right perks at the right time.</p>
+                <div class="dialog-grid">
+                  <div>
+                    <strong>Controls</strong>
+                    <p>`Space` or tap to jump, `1` `2` `3` to buy perks, and `P` to pause.</p>
+                  </div>
+                  <div>
+                    <strong>Power Ups</strong>
+                    <p>Red apples protect you for 10 seconds. Rotten apples only boost speed, so they are risky.</p>
+                  </div>
+                  <div>
+                    <strong>Goal</strong>
+                    <p>Build score, pass obstacles cleanly, and stack enough coins to buy game-saving perks.</p>
+                  </div>
+                </div>
+                <div class="playfield-dialog-actions">
+                  <button id="startGameButton" type="button">Start Run</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="playfield-overlay pause-overlay" id="pauseOverlay" hidden>
+              <div class="playfield-dialog compact-dialog">
+                <p class="dialog-kicker">Paused</p>
+                <h2>Take a breath</h2>
+                <p class="dialog-copy">Press `P`, `Escape`, or Resume when you are ready to continue the run.</p>
+                <div class="playfield-dialog-actions">
+                  <button id="resumeGameButton" type="button">Resume</button>
+                </div>
+              </div>
+            </section>
 
             <div class="hud-row">
               <div class="hud-card">
@@ -111,6 +152,6 @@
   </div>
 
   <button id="restartButton" type="button" hidden>Restart</button>
-  <script src="./game.js?v=20260520-1"></script>
+  <script src="./game.js?v=20260520-2"></script>
 </body>
 </html>

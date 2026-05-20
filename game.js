@@ -163,6 +163,11 @@ const gameOverOverlay = document.getElementById("gameOverOverlay");
 const finalScoreValue = document.getElementById("finalScoreValue");
 const overlayRestartButton = document.getElementById("overlayRestartButton");
 const statusText = document.getElementById("statusText");
+const pauseButton = document.getElementById("pauseButton");
+const introOverlay = document.getElementById("introOverlay");
+const pauseOverlay = document.getElementById("pauseOverlay");
+const startGameButton = document.getElementById("startGameButton");
+const resumeGameButton = document.getElementById("resumeGameButton");
 const perkButtons = [...document.querySelectorAll(".perk-button")];
 
 const leaderboard = new LeaderboardService();
@@ -185,6 +190,18 @@ const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
 const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
 const GAME_UPDATES = [
+  {
+    dateTime: "2026-05-20T14:16:00+02:00",
+    displayTime: "May 20, 2026 at 14:16",
+    title: "Intro And Pause Flow",
+    description: "The game now opens with a short how-to-play intro and supports pausing with a button, P, or Escape.",
+  },
+  {
+    dateTime: "2026-05-20T14:09:00+02:00",
+    displayTime: "May 20, 2026 at 14:09",
+    title: "Richer Obstacle Pass",
+    description: "Obstacles now include extra themed variants and more visual detail to make each run feel less repetitive.",
+  },
   {
     dateTime: "2026-05-20T11:42:00+02:00",
     displayTime: "May 20, 2026 at 11:42",
@@ -266,7 +283,9 @@ const state = {
   forcedScoreSave: false,
   scoreSaveDecisionPending: false,
   scoreSubmissionInProgress: false,
-  status: "Press Space or tap to jump.",
+  hasStarted: false,
+  paused: false,
+  status: "Open the intro and start your run.",
   worldSpeed: 7,
   horse: {
     x: 150,
@@ -321,10 +340,15 @@ const hudCache = {
   submitText: "",
   promptText: "",
   finalScore: "",
+  status: "",
   overlayHidden: null,
+  introHidden: null,
+  pauseHidden: null,
   inputDisabled: null,
   submitDisabled: null,
   restartDisabled: null,
+  pauseButtonLabel: "",
+  pauseButtonDisabled: null,
   perkButtons: new Map(),
 };
 
@@ -364,7 +388,7 @@ function unlockAudio() {
   }
 
   audioState.unlocked = true;
-  if (!audioState.started) {
+  if (!audioState.started && state.hasStarted) {
     startAreaMusic(state.area, true);
     audioState.started = true;
   }
@@ -500,10 +524,11 @@ function getAreaMusicPattern(area) {
 
 function stopAreaMusic() {
   if (audioState.musicTimer) {
-    clearTimeout(audioState.musicTimer);
+    window.clearTimeout(audioState.musicTimer);
     audioState.musicTimer = null;
   }
   audioState.nextMusicAt = 0;
+  audioState.currentArea = -1;
 }
 
 function scheduleAreaMusic(area) {
@@ -570,6 +595,13 @@ function startAreaMusic(area, forceRestart = false) {
   scheduleAreaMusic(area);
 }
 
+function getDesiredMusic() {
+  if (state.bullUntil > state.frame) return "bull";
+  if (state.rottenBoostUntil > state.frame) return "rotten";
+  if (state.powerModeUntil > state.frame) return "power";
+  return state.area;
+}
+
 function resetGame() {
   accumulatedTime = 0;
   lastTickTime = null;
@@ -584,6 +616,7 @@ function resetGame() {
   state.forcedScoreSave = false;
   state.scoreSaveDecisionPending = false;
   state.scoreSubmissionInProgress = false;
+  state.paused = false;
   state.status = FRIDAY_EVENT_ACTIVE
     ? "Friday special active: find meat to become a bull."
     : "Press Space or tap to jump.";
@@ -613,7 +646,58 @@ function resetGame() {
     onGround: true,
   });
   playerNameInput.value = "";
-  startAreaMusic(state.area, true);
+  if (state.hasStarted) {
+    if (audioState.unlocked) {
+      startAreaMusic(state.area, true);
+      audioState.started = true;
+    }
+  } else {
+    stopAreaMusic();
+    audioState.started = false;
+  }
+}
+
+function startRun() {
+  if (state.hasStarted) {
+    return;
+  }
+  state.hasStarted = true;
+  state.paused = false;
+  accumulatedTime = 0;
+  lastTickTime = null;
+  state.status = FRIDAY_EVENT_ACTIVE
+    ? "Friday special active: find meat to become a bull."
+    : "Run started. Jump with Space or tap.";
+  if (audioState.unlocked) {
+    startAreaMusic(getDesiredMusic(), true);
+    audioState.started = true;
+  }
+}
+
+function togglePause(forcePaused = null) {
+  if (!state.hasStarted || state.gameOver) {
+    return;
+  }
+
+  const nextPaused = forcePaused === null ? !state.paused : forcePaused;
+  if (nextPaused === state.paused) {
+    return;
+  }
+
+  state.paused = nextPaused;
+  accumulatedTime = 0;
+  lastTickTime = null;
+
+  if (state.paused) {
+    state.status = "Paused. Press P, Escape, or Resume to continue.";
+    stopAreaMusic();
+  } else {
+    state.status = "Back in the run.";
+    if (audioState.unlocked) {
+      startAreaMusic(getDesiredMusic(), true);
+      audioState.started = true;
+    }
+  }
 }
 
 function getAreaTheme() {
@@ -672,7 +756,7 @@ function getPerkCountdownState() {
 }
 
 function tryActivatePerk(perkName) {
-  if (state.gameOver) return;
+  if (state.gameOver || !state.hasStarted || state.paused) return;
   if (hasAnyActivePerk()) {
     state.status = "Only one perk can be active at a time.";
     playErrorSound();
@@ -697,7 +781,7 @@ function tryActivatePerk(perkName) {
 }
 
 function jump() {
-  if (state.gameOver) return;
+  if (state.gameOver || !state.hasStarted || state.paused) return;
   if (state.flyUntil > state.frame) {
     state.horse.vy = -10.5;
     state.horse.onGround = false;
@@ -721,12 +805,15 @@ function buildObstacle(type, x) {
     fence: { width: 58, height: 56, color: "#9c7045" },
     log: { width: 62, height: 30, color: "#7b5230" },
     hurdle: { width: 70, height: 50, color: "#b28a57" },
+    mailbox: { width: 46, height: 60, color: "#b63e34" },
     farmer: { width: 70, height: 94, color: "#5d78b8" },
     tractor: { width: 118, height: 78, color: "#59a53f" },
     spike: { width: 48, height: 28, color: "#d7dbe2" },
     sheep: { width: 92, height: 66, color: "#f7f2ea" },
     scarecrow: { width: 74, height: 98, color: "#c86c38" },
     rooster: { width: 60, height: 58, color: "#47ab45" },
+    wagon: { width: 104, height: 60, color: "#be8d47" },
+    windmill: { width: 74, height: 108, color: "#d8d2c3" },
     cow: { width: 98, height: 68, color: "#fff6e7" },
   };
   const spec = specs[type];
@@ -746,7 +833,7 @@ function buildObstacle(type, x) {
 
 function spawnObstacle() {
   const difficulty = Math.min(8, Math.floor(state.score / 1200));
-  const types = ["hay", "crate", "barrel", "bush", "fence", "log", "hurdle", "farmer", "tractor", "spike", "sheep", "scarecrow", "rooster", "cow"];
+  const types = ["hay", "crate", "barrel", "bush", "fence", "log", "hurdle", "mailbox", "farmer", "tractor", "spike", "sheep", "scarecrow", "rooster", "wagon", "windmill", "cow"];
   const availableTypes = types.slice(0, Math.min(types.length, 7 + difficulty));
   const cowUnlocked = state.score >= 2600;
   const spawnCow = cowUnlocked && Math.random() < 0.18;
@@ -873,11 +960,7 @@ function updateWorld() {
     + (state.rottenBoostUntil > state.frame ? 3.2 : 0)
     + (state.bullUntil > state.frame ? 4.4 : 0);
   state.score += 1;
-  const desiredMusic = state.bullUntil > state.frame
-    ? "bull"
-    : state.rottenBoostUntil > state.frame
-    ? "rotten"
-    : (state.powerModeUntil > state.frame ? "power" : state.area);
+  const desiredMusic = getDesiredMusic();
   if (desiredMusic !== audioState.currentArea || state.area !== previousArea) {
     startAreaMusic(desiredMusic, true);
   }
@@ -1462,6 +1545,24 @@ function drawObstacle(obstacle) {
     return;
   }
 
+  if (obstacle.type === "mailbox") {
+    const wobble = Math.sin(state.frame * 0.2 + obstacle.animSeed) * 3;
+    ctx.fillStyle = "#80552f";
+    ctx.fillRect(obstacle.x + obstacle.width / 2 - 5, obstacle.y + 20, 10, obstacle.height - 20);
+    ctx.fillStyle = "#b63e34";
+    ctx.strokeStyle = "#7d221d";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(obstacle.x + 8, obstacle.y + 6, obstacle.width - 16, 30, 8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#f4f1e6";
+    ctx.fillRect(obstacle.x + 18, obstacle.y + 16, obstacle.width - 28, 8);
+    ctx.fillStyle = "#f2c34d";
+    ctx.fillRect(obstacle.x + obstacle.width - 14, obstacle.y + 12 + wobble, 12, 4);
+    return;
+  }
+
   if (obstacle.type === "farmer") {
     const bounce = Math.sin(state.frame * 0.2 + obstacle.animSeed) * 2.5;
     ctx.fillStyle = "#6f4a2f";
@@ -1525,6 +1626,69 @@ function drawObstacle(obstacle) {
     ctx.arc(obstacle.x + 28, GROUND_Y, 8, 0, Math.PI * 2);
     ctx.arc(obstacle.x + obstacle.width - 24, GROUND_Y, 5, 0, Math.PI * 2);
     ctx.fill();
+    return;
+  }
+
+  if (obstacle.type === "wagon") {
+    const wheelSpin = state.frame * 0.22 + obstacle.animSeed;
+    ctx.fillStyle = "#8e6035";
+    ctx.fillRect(obstacle.x + 6, obstacle.y + 20, obstacle.width - 12, 10);
+    ctx.fillRect(obstacle.x + 22, obstacle.y + 8, obstacle.width - 36, 18);
+    ctx.strokeStyle = "#5b3c20";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(obstacle.x + 14, obstacle.y + 16, obstacle.width - 28, 24);
+    ctx.fillStyle = "#e7c862";
+    for (const baleX of [24, 44, 64]) {
+      ctx.fillRect(obstacle.x + baleX, obstacle.y + 4, 18, 12);
+      ctx.strokeRect(obstacle.x + baleX, obstacle.y + 4, 18, 12);
+    }
+    for (const wheelX of [26, obstacle.width - 24]) {
+      ctx.fillStyle = "#2f241b";
+      ctx.beginPath();
+      ctx.arc(obstacle.x + wheelX, GROUND_Y, 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#d1c5b2";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(obstacle.x + wheelX, GROUND_Y);
+      ctx.lineTo(obstacle.x + wheelX + Math.cos(wheelSpin) * 9, GROUND_Y + Math.sin(wheelSpin) * 9);
+      ctx.moveTo(obstacle.x + wheelX, GROUND_Y);
+      ctx.lineTo(obstacle.x + wheelX + Math.cos(wheelSpin + Math.PI / 2) * 9, GROUND_Y + Math.sin(wheelSpin + Math.PI / 2) * 9);
+      ctx.stroke();
+    }
+    return;
+  }
+
+  if (obstacle.type === "windmill") {
+    const bladeAngle = state.frame * 0.07 + obstacle.animSeed;
+    ctx.fillStyle = "#d5d0c4";
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + obstacle.width / 2, obstacle.y);
+    ctx.lineTo(obstacle.x + obstacle.width - 10, GROUND_Y);
+    ctx.lineTo(obstacle.x + 10, GROUND_Y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#8f7d68";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = "#8c5a34";
+    ctx.fillRect(obstacle.x + obstacle.width / 2 - 4, obstacle.y + 26, 8, obstacle.height - 26);
+    ctx.save();
+    ctx.translate(obstacle.x + obstacle.width / 2, obstacle.y + 30);
+    ctx.rotate(bladeAngle);
+    ctx.fillStyle = "#f3ece0";
+    for (let index = 0; index < 4; index += 1) {
+      ctx.rotate(Math.PI / 2);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(10, -8);
+      ctx.lineTo(34, 0);
+      ctx.lineTo(10, 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.restore();
     return;
   }
 
@@ -1954,6 +2118,10 @@ function syncHud() {
   const areaText = `${state.area + 1}`;
   const perkText = getActivePerk();
   const statusLine = state.status;
+  const introHidden = state.hasStarted;
+  const pauseHidden = !state.paused;
+  const pauseButtonLabel = state.paused ? "Resume" : "Pause";
+  const pauseButtonDisabled = !state.hasStarted || state.gameOver;
   const submitText = state.awaitingScoreEntry
     ? (state.scoreSubmissionInProgress
       ? "Saving..."
@@ -1999,6 +2167,14 @@ function syncHud() {
     statusText.textContent = statusLine;
     hudCache.status = statusLine;
   }
+  if (introOverlay && hudCache.introHidden !== introHidden) {
+    introOverlay.hidden = introHidden;
+    hudCache.introHidden = introHidden;
+  }
+  if (pauseOverlay && hudCache.pauseHidden !== pauseHidden) {
+    pauseOverlay.hidden = pauseHidden;
+    hudCache.pauseHidden = pauseHidden;
+  }
   if (hudCache.submitText !== submitText) {
     scoreSubmitButton.textContent = submitText;
     hudCache.submitText = submitText;
@@ -2026,6 +2202,14 @@ function syncHud() {
   if (overlayRestartButton && hudCache.restartDisabled !== restartDisabled) {
     overlayRestartButton.disabled = restartDisabled;
     hudCache.restartDisabled = restartDisabled;
+  }
+  if (pauseButton && hudCache.pauseButtonLabel !== pauseButtonLabel) {
+    pauseButton.textContent = pauseButtonLabel;
+    hudCache.pauseButtonLabel = pauseButtonLabel;
+  }
+  if (pauseButton && hudCache.pauseButtonDisabled !== pauseButtonDisabled) {
+    pauseButton.disabled = pauseButtonDisabled;
+    hudCache.pauseButtonDisabled = pauseButtonDisabled;
   }
 
   for (const button of perkButtons) {
@@ -2246,7 +2430,7 @@ function tick(timestamp = performance.now()) {
     lastTickTime = timestamp;
   }
 
-  if (!state.gameOver) {
+  if (state.hasStarted && !state.paused && !state.gameOver) {
     const elapsed = Math.min(250, timestamp - lastTickTime);
     accumulatedTime += elapsed;
     let simulationSteps = 0;
@@ -2296,9 +2480,18 @@ function tick(timestamp = performance.now()) {
 
 document.addEventListener("keydown", (event) => {
   unlockAudio();
+  if ((event.code === "KeyP" || event.code === "Escape") && state.hasStarted && !state.gameOver && !state.awaitingScoreEntry) {
+    event.preventDefault();
+    togglePause();
+    return;
+  }
   if (event.code === "Space") {
     event.preventDefault();
-    if (
+    if (!state.hasStarted) {
+      startRun();
+    } else if (state.paused) {
+      return;
+    } else if (
       state.gameOver &&
       state.awaitingScoreEntry &&
       !playerNameInput.value.trim() &&
@@ -2327,7 +2520,11 @@ canvas.addEventListener("pointerdown", (event) => {
     return;
   }
   unlockAudio();
-  if (state.gameOver && !state.awaitingScoreEntry) {
+  if (!state.hasStarted) {
+    startRun();
+  } else if (state.paused) {
+    return;
+  } else if (state.gameOver && !state.awaitingScoreEntry) {
     resetGame();
   } else if (!state.awaitingScoreEntry) {
     jump();
@@ -2337,7 +2534,11 @@ canvas.addEventListener("pointerdown", (event) => {
 canvas.addEventListener("touchstart", (event) => {
   event.preventDefault();
   unlockAudio();
-  if (state.gameOver && !state.awaitingScoreEntry) {
+  if (!state.hasStarted) {
+    startRun();
+  } else if (state.paused) {
+    return;
+  } else if (state.gameOver && !state.awaitingScoreEntry) {
     resetGame();
   } else if (!state.awaitingScoreEntry) {
     jump();
@@ -2352,6 +2553,27 @@ for (const button of perkButtons) {
   button.addEventListener("click", () => {
     unlockAudio();
     tryActivatePerk(button.dataset.perk);
+  });
+}
+
+if (pauseButton) {
+  pauseButton.addEventListener("click", () => {
+    unlockAudio();
+    togglePause();
+  });
+}
+
+if (startGameButton) {
+  startGameButton.addEventListener("click", () => {
+    unlockAudio();
+    startRun();
+  });
+}
+
+if (resumeGameButton) {
+  resumeGameButton.addEventListener("click", () => {
+    unlockAudio();
+    togglePause(false);
   });
 }
 

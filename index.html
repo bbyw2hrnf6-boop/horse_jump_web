@@ -6,7 +6,7 @@
   <meta name="description" content="Horse Jump Web is a browser endless runner with perks, coins, carrots, and online leaderboard support.">
   <meta name="theme-color" content="#dbefff">
   <title>Horse Jump Web</title>
-  <link rel="stylesheet" href="./styles.css?v=20260521-04">
+  <link rel="stylesheet" href="./styles.css?v=20260521-05">
 </head>
 <body>
   <div class="app-shell">
@@ -52,7 +52,7 @@
         <div class="game-stage" id="gameStage">
           <div class="playfield" id="playfield">
             <div class="playfield-controls" aria-label="Quick game controls">
-              <button id="fullscreenButton" class="fullscreen-button playfield-control-button desktop-only-control" type="button" aria-label="Enter full screen" title="Full screen">Full</button>
+              <button id="fullscreenButton" class="fullscreen-button playfield-control-button desktop-only-control" type="button" aria-label="Enter full screen" title="Full screen">⛶</button>
               <button id="pauseButton" class="pause-button playfield-control-button" type="button">Pause</button>
               <button id="settingsButton" class="settings-gear playfield-control-button" type="button" aria-label="Open settings" title="Settings">⚙</button>
             </div>
@@ -63,21 +63,21 @@
             <section class="playfield-overlay intro-overlay" id="introOverlay">
               <div class="playfield-dialog">
                 <p class="dialog-kicker">How To Play</p>
-                <h2>Welcome to Horse Jump Web</h2>
-                <p class="dialog-copy">Stay alive as long as you can by jumping over obstacles, collecting coins, and choosing the right perks at the right time.</p>
-                <p class="mobile-intro-copy">Tap to jump. Grab coins. Survive.</p>
+                <h2 id="introTitle">Welcome to Horse Jump Web</h2>
+                <p class="dialog-copy" id="introCopy">Stay alive as long as you can by jumping over obstacles, collecting coins, and choosing the right perks at the right time.</p>
+                <p class="mobile-intro-copy" id="introMobileCopy">Tap to jump. Grab coins. Survive.</p>
                 <div class="dialog-grid">
                   <div>
-                    <strong>Controls</strong>
-                    <p>`Space` or tap to jump, `1` `2` `3` to buy perks, and `P` to pause.</p>
+                    <strong id="introControlsTitle">Controls</strong>
+                    <p id="introControlsCopy">`Space` or tap to jump, `1` `2` `3` to buy perks, and `P` to pause.</p>
                   </div>
                   <div>
-                    <strong>Power Ups</strong>
-                    <p>Red apples protect you for 10 seconds. Rotten apples only boost speed, so they are risky.</p>
+                    <strong id="introPowerTitle">Power Ups</strong>
+                    <p id="introPowerCopy">Red apples protect you for 10 seconds. Rotten apples only boost speed, so they are risky.</p>
                   </div>
                   <div>
-                    <strong>Goal</strong>
-                    <p>Build score, pass obstacles cleanly, and stack enough coins to buy game-saving perks.</p>
+                    <strong id="introGoalTitle">Goal</strong>
+                    <p id="introGoalCopy">Build score, pass obstacles cleanly, and stack enough coins to buy game-saving perks.</p>
                   </div>
                 </div>
                 <div class="playfield-dialog-actions">
@@ -212,6 +212,6 @@
   </div>
 
   <button id="restartButton" type="button" hidden>Restart</button>
-  <script src="./game.js?v=20260521-04"></script>
+  <script src="./game.js?v=20260521-05"></script>
 </body>
 </html>

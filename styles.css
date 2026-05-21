@@ -486,14 +486,14 @@ body.dark-mode .settings-gear {
 .playfield-control-button {
   min-width: 0;
   min-height: 0;
-  padding: 6px 8px;
+  padding: 7px 10px;
   border: 1px solid rgba(255, 251, 244, 0.46);
   background: rgba(47, 36, 27, 0.32);
   color: #fffaf0;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
-  font-size: 0.66rem;
+  font-size: 0.72rem;
   line-height: 1;
 }
 
@@ -504,15 +504,15 @@ body.dark-mode .settings-gear {
 
 .playfield-controls .settings-gear,
 .playfield-controls .fullscreen-button {
-  width: 28px;
-  height: 28px;
+  width: 31px;
+  height: 31px;
   padding: 0;
   border-radius: 50%;
-  font-size: 0.78rem;
+  font-size: 0.9rem;
 }
 
 .playfield-controls .fullscreen-button {
-  font-size: 0.56rem;
+  font-size: 0.86rem;
   font-weight: 900;
 }
 
@@ -1255,14 +1255,14 @@ input:focus-visible {
   }
 
   .playfield-control-button {
-    padding: 5px 7px;
-    font-size: 0.56rem;
+    padding: 6px 8px;
+    font-size: 0.62rem;
   }
 
   .playfield-controls .settings-gear {
-    width: 24px;
-    height: 24px;
-    font-size: 0.68rem;
+    width: 27px;
+    height: 27px;
+    font-size: 0.78rem;
   }
 
   .playfield-controls .fullscreen-button {

@@ -223,6 +223,15 @@ const fullscreenButton = document.getElementById("fullscreenButton");
 const introOverlay = document.getElementById("introOverlay");
 const pauseOverlay = document.getElementById("pauseOverlay");
 const startGameButton = document.getElementById("startGameButton");
+const introTitle = document.getElementById("introTitle");
+const introCopy = document.getElementById("introCopy");
+const introMobileCopy = document.getElementById("introMobileCopy");
+const introControlsTitle = document.getElementById("introControlsTitle");
+const introControlsCopy = document.getElementById("introControlsCopy");
+const introPowerTitle = document.getElementById("introPowerTitle");
+const introPowerCopy = document.getElementById("introPowerCopy");
+const introGoalTitle = document.getElementById("introGoalTitle");
+const introGoalCopy = document.getElementById("introGoalCopy");
 const resumeGameButton = document.getElementById("resumeGameButton");
 const gamePanel = document.getElementById("gamePanel");
 const gameStage = document.getElementById("gameStage");
@@ -262,7 +271,39 @@ const PERK_COSTS = { fly: 35, magnet: 8, blaster: 32 };
 const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
 const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
+const INTRO_CONTENT = {
+  normal: {
+    title: "Welcome to Horse Jump Web",
+    copy: "Stay alive as long as you can by jumping over obstacles, collecting coins, and choosing the right perks at the right time.",
+    mobileCopy: "Tap to jump. Grab coins. Survive.",
+    controlsTitle: "Controls",
+    controlsCopy: "`Space` or tap to jump, `1` `2` `3` to buy perks, and `P` to pause.",
+    powerTitle: "Power Ups",
+    powerCopy: "Red apples protect you for 10 seconds. Rotten apples only boost speed, so they are risky.",
+    goalTitle: "Goal",
+    goalCopy: "Build score, pass obstacles cleanly, and stack enough coins to buy game-saving perks.",
+    startLabel: "Start Run",
+  },
+  hardcore: {
+    title: "Hardcore Mode: Boss Rush",
+    copy: "Hardcore adds darker maps, flying enemies, boss fights, weapons, and a separate Hardcore leaderboard. Survive the run, then defeat each boss.",
+    mobileCopy: "Tap to jump. Boss fight: drag left/right. Grab weapons.",
+    controlsTitle: "Hardcore Controls",
+    controlsCopy: "`Space` or tap to jump. Boss fights: use `A/D`, arrow keys, or mobile drag to dodge targeted attacks.",
+    powerTitle: "Boss Tools",
+    powerCopy: "Collect boss weapons for spread, laser, or mega carrots. Red apples still protect you, rotten apples only make you faster.",
+    goalTitle: "Hardcore Goal",
+    goalCopy: "Beat Dino, Crab, Biber, Alien, and Bigfood, then save your score to the Hardcore-only leaderboard.",
+    startLabel: "Start Hardcore",
+  },
+};
 const GAME_UPDATES = [
+  {
+    dateTime: "2026-05-21T17:14:00+02:00",
+    displayTime: "May 21, 2026 at 17:14",
+    title: "Hardcore How To Play",
+    description: "The start instructions now switch for Hardcore mode, and the in-game pause, settings, and fullscreen controls are easier to tap.",
+  },
   {
     dateTime: "2026-05-21T16:58:00+02:00",
     displayTime: "May 21, 2026 at 16:58",
@@ -680,10 +721,24 @@ function syncFullscreenButton() {
     return;
   }
   const isActive = isFullscreenActive();
-  fullscreenButton.textContent = isActive ? "Exit" : "Full";
+  fullscreenButton.textContent = isActive ? "×" : "⛶";
   fullscreenButton.title = isActive ? "Exit full screen" : "Full screen";
   fullscreenButton.setAttribute("aria-label", isActive ? "Exit full screen" : "Enter full screen");
   fullscreenButton.hidden = !document.fullscreenEnabled;
+}
+
+function syncIntroCopy() {
+  const content = appSettings.hardcore ? INTRO_CONTENT.hardcore : INTRO_CONTENT.normal;
+  if (introTitle) introTitle.textContent = content.title;
+  if (introCopy) introCopy.textContent = content.copy;
+  if (introMobileCopy) introMobileCopy.textContent = content.mobileCopy;
+  if (introControlsTitle) introControlsTitle.textContent = content.controlsTitle;
+  if (introControlsCopy) introControlsCopy.textContent = content.controlsCopy;
+  if (introPowerTitle) introPowerTitle.textContent = content.powerTitle;
+  if (introPowerCopy) introPowerCopy.textContent = content.powerCopy;
+  if (introGoalTitle) introGoalTitle.textContent = content.goalTitle;
+  if (introGoalCopy) introGoalCopy.textContent = content.goalCopy;
+  if (startGameButton) startGameButton.textContent = content.startLabel;
 }
 
 async function toggleFullscreenMode() {
@@ -730,6 +785,7 @@ function syncSettingsControls() {
 function applySettings() {
   document.body.classList.toggle("dark-mode", appSettings.darkMode);
   document.body.classList.toggle("hardcore-active", appSettings.hardcore);
+  syncIntroCopy();
   if (hardcorePromoStatus) {
     hardcorePromoStatus.textContent = appSettings.hardcore
       ? "Hardcore ist AN: Lava, Geister, Bossfights und Hardcore-Rangliste."

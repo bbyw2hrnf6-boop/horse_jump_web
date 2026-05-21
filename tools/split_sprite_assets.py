@@ -10,10 +10,12 @@ ROOT = Path(__file__).resolve().parents[1]
 ASSET_DIR = ROOT / "assets"
 SPRITE_DIR = ASSET_DIR / "sprites"
 
-BOSS_SOURCE = ASSET_DIR / "image2.png"
-OBSTACLE_SOURCE = ASSET_DIR / "image.png"
+NEW_BOSS_SOURCE = ASSET_DIR / "newbosses.png"
+BOSS_SOURCE = NEW_BOSS_SOURCE if NEW_BOSS_SOURCE.exists() else ASSET_DIR / "image2.png"
+NEW_OBSTACLE_SOURCE = ASSET_DIR / "newobstacles.png"
+OBSTACLE_SOURCE = NEW_OBSTACLE_SOURCE if NEW_OBSTACLE_SOURCE.exists() else ASSET_DIR / "image.png"
 
-BOSS_CROPS = {
+BOSS_CROPS_CLASSIC = {
     "crab": (15, 185, 500, 545),
     "biber": (500, 205, 910, 545),
     "alien": (900, 190, 1390, 550),
@@ -21,7 +23,17 @@ BOSS_CROPS = {
     "bigfoot": (715, 635, 1370, 1035),
 }
 
-OBSTACLE_CROPS = {
+BOSS_CROPS_HD = {
+    "crab": (45, 55, 560, 420),
+    "biber": (910, 55, 1465, 410),
+    "alien": (515, 255, 1015, 640),
+    "dinosaur": (50, 515, 665, 940),
+    "bigfoot": (895, 520, 1455, 935),
+}
+
+BOSS_CROPS = BOSS_CROPS_HD if BOSS_SOURCE == NEW_BOSS_SOURCE else BOSS_CROPS_CLASSIC
+
+OBSTACLE_CROPS_CLASSIC = {
     "hay": (15, 200, 232, 382),
     "crate": (240, 195, 410, 382),
     "barrel": (432, 185, 580, 384),
@@ -40,6 +52,28 @@ OBSTACLE_CROPS = {
     "windmill": (1315, 435, 1518, 700),
     "cow": (1508, 515, 1742, 700),
 }
+
+OBSTACLE_CROPS_HD = {
+    "hay": (30, 160, 255, 385),
+    "crate": (262, 165, 445, 382),
+    "barrel": (458, 155, 610, 382),
+    "bush": (612, 165, 815, 380),
+    "fence": (815, 180, 1025, 365),
+    "log": (1020, 185, 1215, 365),
+    "hurdle": (1228, 178, 1402, 365),
+    "mailbox": (1405, 165, 1538, 375),
+    "farmer": (1530, 125, 1684, 382),
+    "tractor": (20, 458, 286, 714),
+    "spike": (296, 548, 460, 712),
+    "sheep": (462, 486, 660, 714),
+    "scarecrow": (662, 422, 822, 715),
+    "rooster": (824, 462, 1008, 715),
+    "wagon": (1020, 486, 1242, 715),
+    "windmill": (1270, 420, 1430, 715),
+    "cow": (1436, 486, 1680, 715),
+}
+
+OBSTACLE_CROPS = OBSTACLE_CROPS_HD if OBSTACLE_SOURCE == NEW_OBSTACLE_SOURCE else OBSTACLE_CROPS_CLASSIC
 
 
 def color_distance(a, b):
@@ -103,13 +137,51 @@ def trim_transparent(image, padding=8):
     return image.crop((left, top, right, bottom))
 
 
-def split_sheet(source_path, crop_map, output_dir):
+def keep_largest_component(image):
+    """Keep the main cutout and remove unrelated pieces from nearby sprites."""
+    rgba = image.convert("RGBA")
+    width, height = rgba.size
+    pixels = rgba.load()
+    seen = set()
+    components = []
+
+    for y in range(height):
+        for x in range(width):
+            if (x, y) in seen or pixels[x, y][3] == 0:
+                continue
+            queue = deque([(x, y)])
+            seen.add((x, y))
+            component = []
+            while queue:
+                px, py = queue.popleft()
+                component.append((px, py))
+                for nx, ny in ((px - 1, py), (px + 1, py), (px, py - 1), (px, py + 1)):
+                    if 0 <= nx < width and 0 <= ny < height and (nx, ny) not in seen and pixels[nx, ny][3] > 0:
+                        seen.add((nx, ny))
+                        queue.append((nx, ny))
+            components.append(component)
+
+    if not components:
+        return rgba
+
+    keep = set(max(components, key=len))
+    for y in range(height):
+        for x in range(width):
+            if pixels[x, y][3] > 0 and (x, y) not in keep:
+                r, g, b, _ = pixels[x, y]
+                pixels[x, y] = (r, g, b, 0)
+    return rgba
+
+
+def split_sheet(source_path, crop_map, output_dir, isolate_main=False):
     source = Image.open(source_path).convert("RGBA")
     output_dir.mkdir(parents=True, exist_ok=True)
     written = []
     for name, box in crop_map.items():
         sprite = source.crop(box)
         sprite = remove_connected_backdrop(sprite)
+        if isolate_main:
+            sprite = keep_largest_component(sprite)
         sprite = trim_transparent(sprite)
         output_path = output_dir / f"{name}.png"
         sprite.save(output_path, optimize=True)
@@ -119,9 +191,9 @@ def split_sheet(source_path, crop_map, output_dir):
 
 def main():
     if not BOSS_SOURCE.exists() or not OBSTACLE_SOURCE.exists():
-        raise SystemExit("Expected assets/image2.png and assets/image.png to exist.")
+        raise SystemExit("Expected a boss sheet and assets/image.png to exist.")
     written = []
-    written += split_sheet(BOSS_SOURCE, BOSS_CROPS, SPRITE_DIR / "bosses")
+    written += split_sheet(BOSS_SOURCE, BOSS_CROPS, SPRITE_DIR / "bosses", isolate_main=True)
     written += split_sheet(OBSTACLE_SOURCE, OBSTACLE_CROPS, SPRITE_DIR / "obstacles")
     for path in written:
         print(path.relative_to(ROOT))

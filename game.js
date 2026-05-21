@@ -273,8 +273,8 @@ const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
 const SPRITE_SHEET_SCALE = 2.5;
 const SPRITE_PADDING = 40;
 const EXTERNAL_SPRITE_PATHS = {
-  bosses: "./assets/image2.png",
-  obstacles: "./assets/image.png",
+  bosses: "./assets/newbosses.png",
+  obstacles: "./assets/newobstacles.png",
 };
 const EXTERNAL_BOSS_FILES = {
   crab: "./assets/sprites/bosses/crab.png",
@@ -357,6 +357,12 @@ const INTRO_CONTENT = {
   },
 };
 const GAME_UPDATES = [
+  {
+    dateTime: "2026-05-21T23:37:00+02:00",
+    displayTime: "May 21, 2026 at 23:37",
+    title: "Living Sprite Animations",
+    description: "Bosses and obstacle PNGs now get subtle breathing, bobbing, swaying, glows, dust, wheel shakes, windmill blades, and boss-specific aura effects without changing hitboxes.",
+  },
   {
     dateTime: "2026-05-21T22:32:00+02:00",
     displayTime: "May 21, 2026 at 22:32",
@@ -933,7 +939,92 @@ function getDrawableSize(drawable) {
   };
 }
 
-function drawExternalSprite(kind, type, cropMap, box) {
+function spritePhase(seed = 0, speed = 0.08) {
+  return state.frame * speed + seed;
+}
+
+function drawSpriteShadow(box, strength = 0.18, widthScale = 0.64) {
+  ctx.save();
+  ctx.fillStyle = `rgba(20, 12, 8, ${strength})`;
+  ctx.beginPath();
+  ctx.ellipse(
+    box.x + box.width / 2,
+    box.y + box.height - 4,
+    box.width * widthScale,
+    Math.max(5, box.height * 0.08),
+    0,
+    0,
+    Math.PI * 2,
+  );
+  ctx.fill();
+  ctx.restore();
+}
+
+function getBossSpriteMotion(boss) {
+  const phase = spritePhase(boss.phase || 0, 0.075);
+  const stomp = Math.sin(phase * 2);
+  const motion = {
+    offsetX: Math.sin(phase * 0.7) * 1.6,
+    offsetY: Math.sin(phase) * 3,
+    rotation: Math.sin(phase * 0.55) * 0.018,
+    scaleX: 1 + Math.sin(phase) * 0.012,
+    scaleY: 1 - Math.sin(phase) * 0.01,
+    shadow: 0.26,
+  };
+
+  if (boss.type === "crab") {
+    motion.offsetX = Math.sin(phase * 1.7) * 2.8;
+    motion.rotation = Math.sin(phase * 1.2) * 0.026;
+  } else if (boss.type === "biber") {
+    motion.offsetY = Math.sin(phase * 1.25) * 2.4;
+    motion.rotation = Math.sin(phase * 0.9) * 0.014;
+  } else if (boss.type === "alien") {
+    motion.offsetY = Math.sin(phase * 1.4) * 7;
+    motion.rotation = Math.sin(phase * 0.72) * 0.012;
+    motion.shadow = 0.14;
+  } else if (boss.type === "dinosaur") {
+    motion.offsetX = Math.sin(phase * 0.9) * 2;
+    motion.offsetY = Math.max(-2, stomp * 4);
+    motion.scaleY = 1 + Math.max(0, stomp) * 0.018;
+  } else if (boss.type === "bigfoot") {
+    motion.offsetY = Math.max(-1, Math.sin(phase * 1.8) * 4.5);
+    motion.rotation = Math.sin(phase * 0.82) * 0.018;
+    motion.scaleX = 1 + Math.max(0, -stomp) * 0.018;
+  }
+  return motion;
+}
+
+function getObstacleSpriteMotion(obstacle) {
+  const seed = (obstacle.animSeed || 0) * 0.17;
+  const phase = spritePhase(seed, 0.09);
+  const motion = {
+    offsetX: 0,
+    offsetY: 0,
+    rotation: 0,
+    scaleX: 1,
+    scaleY: 1,
+    shadow: 0.16,
+  };
+
+  if (["bush", "fence", "scarecrow"].includes(obstacle.type)) {
+    motion.rotation = Math.sin(phase) * 0.035;
+  } else if (["sheep", "cow", "rooster", "farmer"].includes(obstacle.type)) {
+    motion.offsetY = Math.sin(phase * 1.4) * 2.2;
+    motion.scaleY = 1 + Math.sin(phase * 1.4) * 0.018;
+  } else if (["tractor", "wagon", "barrel"].includes(obstacle.type)) {
+    motion.offsetY = Math.sin(phase * 2.4) * 1.5;
+    motion.rotation = Math.sin(phase * 1.9) * 0.015;
+  } else if (obstacle.type === "windmill") {
+    motion.rotation = Math.sin(phase * 0.7) * 0.012;
+  } else if (["hay", "crate", "log", "hurdle", "mailbox"].includes(obstacle.type)) {
+    motion.offsetY = Math.sin(phase * 0.85) * 0.8;
+  } else if (obstacle.type === "spike") {
+    motion.scaleY = 1 + Math.sin(phase * 1.9) * 0.014;
+  }
+  return motion;
+}
+
+function drawExternalSprite(kind, type, cropMap, box, motion = {}) {
   const sprite = getExternalSpriteFile(kind, type) || getExternalSpriteCanvas(kind, type, cropMap);
   if (!sprite) {
     return false;
@@ -945,11 +1036,99 @@ function drawExternalSprite(kind, type, cropMap, box) {
   const drawHeight = spriteSize.height * ratio;
   const drawX = box.x + (box.width - drawWidth) / 2;
   const drawY = box.y + box.height - drawHeight;
+  drawSpriteShadow(box, motion.shadow ?? 0.18, motion.shadowWidth ?? 0.34);
   const previousSmoothing = ctx.imageSmoothingEnabled;
+  ctx.save();
+  ctx.translate(
+    drawX + drawWidth / 2 + (motion.offsetX || 0),
+    drawY + drawHeight + (motion.offsetY || 0),
+  );
+  ctx.rotate(motion.rotation || 0);
+  ctx.scale(motion.scaleX || 1, motion.scaleY || 1);
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(sprite, drawX, drawY, drawWidth, drawHeight);
+  ctx.drawImage(sprite, -drawWidth / 2, -drawHeight, drawWidth, drawHeight);
   ctx.imageSmoothingEnabled = previousSmoothing;
+  ctx.restore();
   return true;
+}
+
+function drawBossSpriteAura(boss, box) {
+  const phase = spritePhase(boss.phase || 0, 0.085);
+  ctx.save();
+  if (boss.type === "alien") {
+    const pulse = 0.35 + Math.sin(phase * 1.8) * 0.12;
+    const beam = ctx.createLinearGradient(0, box.y + box.height * 0.48, 0, box.y + box.height + 60);
+    beam.addColorStop(0, `rgba(137, 255, 119, ${pulse})`);
+    beam.addColorStop(1, "rgba(137, 255, 119, 0)");
+    ctx.fillStyle = beam;
+    ctx.beginPath();
+    ctx.moveTo(box.x + box.width * 0.42, box.y + box.height * 0.48);
+    ctx.lineTo(box.x + box.width * 0.62, box.y + box.height * 0.48);
+    ctx.lineTo(box.x + box.width * 0.76, box.y + box.height + 56);
+    ctx.lineTo(box.x + box.width * 0.26, box.y + box.height + 56);
+    ctx.closePath();
+    ctx.fill();
+  } else if (boss.type === "crab") {
+    ctx.strokeStyle = `rgba(255, 112, 70, ${0.28 + Math.sin(phase * 2) * 0.1})`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(box.x + box.width * 0.18, box.y + box.height * 0.2, 34, -0.4, Math.PI * 0.8);
+    ctx.arc(box.x + box.width * 0.82, box.y + box.height * 0.2, 34, Math.PI * 0.2, Math.PI + 0.4);
+    ctx.stroke();
+  } else if (boss.type === "bigfoot") {
+    ctx.strokeStyle = `rgba(250, 204, 21, ${0.18 + Math.max(0, Math.sin(phase * 2)) * 0.16})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(box.x + box.width / 2, box.y + box.height - 8, box.width * 0.34, 10, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawBossSpriteEffects(boss, box) {
+  const phase = spritePhase(boss.phase || 0, 0.08);
+  ctx.save();
+  if (boss.type === "dinosaur") {
+    ctx.strokeStyle = "rgba(250, 204, 21, 0.5)";
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 3; i += 1) {
+      const x = box.x + box.width * (0.68 + i * 0.05);
+      const y = box.y + box.height * (0.34 + Math.sin(phase + i) * 0.015);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + 18 + i * 6, y - 8 - i * 4);
+      ctx.stroke();
+    }
+  } else if (boss.type === "biber") {
+    ctx.fillStyle = "rgba(245, 158, 11, 0.72)";
+    for (let i = 0; i < 5; i += 1) {
+      const x = box.x + box.width * (0.52 + i * 0.055);
+      const y = box.y + box.height * (0.55 + Math.sin(phase + i) * 0.045);
+      ctx.fillRect(x, y, 5, 2);
+    }
+  } else if (boss.type === "alien") {
+    for (let i = 0; i < 4; i += 1) {
+      ctx.fillStyle = `rgba(216, 180, 254, ${0.38 + Math.sin(phase * 2 + i) * 0.16})`;
+      ctx.beginPath();
+      ctx.arc(box.x + box.width * (0.28 + i * 0.14), box.y + box.height * 0.44, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (boss.type === "crab") {
+    ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
+    for (let i = 0; i < 4; i += 1) {
+      ctx.beginPath();
+      ctx.arc(box.x + box.width * (0.28 + i * 0.13), box.y + box.height * (0.68 + Math.sin(phase + i) * 0.05), 2.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (boss.type === "bigfoot") {
+    ctx.fillStyle = "rgba(120, 53, 15, 0.25)";
+    for (let i = 0; i < 5; i += 1) {
+      ctx.beginPath();
+      ctx.ellipse(box.x + box.width * (0.25 + i * 0.13), box.y + box.height - 5, 9, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
 }
 
 function drawExternalBossSprite(boss) {
@@ -963,12 +1142,62 @@ function drawExternalBossSprite(boss) {
   const scale = scales[boss.type] || { width: 1.65, height: 1.6 };
   const boxWidth = boss.width * scale.width;
   const boxHeight = boss.height * scale.height;
-  return drawExternalSprite("bosses", boss.type, EXTERNAL_BOSS_CROPS, {
+  const box = {
     x: boss.x + boss.width / 2 - boxWidth / 2,
     y: boss.y + boss.height - boxHeight + 24,
     width: boxWidth,
     height: boxHeight,
-  });
+  };
+  drawBossSpriteAura(boss, box);
+  const drawn = drawExternalSprite("bosses", boss.type, EXTERNAL_BOSS_CROPS, box, getBossSpriteMotion(boss));
+  if (drawn) {
+    drawBossSpriteEffects(boss, box);
+  }
+  return drawn;
+}
+
+function drawObstacleSpriteEffects(obstacle, box) {
+  const phase = spritePhase((obstacle.animSeed || 0) * 0.1, 0.1);
+  ctx.save();
+  if (obstacle.type === "windmill") {
+    const cx = box.x + box.width * 0.55;
+    const cy = box.y + box.height * 0.33;
+    const blade = Math.max(18, box.width * 0.17);
+    ctx.translate(cx, cy);
+    ctx.rotate(phase * 1.35);
+    ctx.strokeStyle = "rgba(255,255,255,0.82)";
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 4; i += 1) {
+      ctx.rotate(Math.PI / 2);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(blade, 0);
+      ctx.stroke();
+    }
+  } else if (["tractor", "wagon"].includes(obstacle.type)) {
+    ctx.strokeStyle = "rgba(255,255,255,0.34)";
+    ctx.lineWidth = 2;
+    const wheelY = box.y + box.height * 0.78;
+    for (const wheelX of [box.x + box.width * 0.28, box.x + box.width * 0.74]) {
+      ctx.beginPath();
+      ctx.arc(wheelX, wheelY, Math.max(6, box.width * 0.05), phase, phase + Math.PI * 1.25);
+      ctx.stroke();
+    }
+  } else if (obstacle.type === "spike") {
+    ctx.strokeStyle = `rgba(255,255,255,${0.4 + Math.sin(phase * 2) * 0.18})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(box.x + box.width * 0.22, box.y + box.height * 0.24);
+    ctx.lineTo(box.x + box.width * 0.62, box.y + box.height * 0.08);
+    ctx.stroke();
+  } else if (["bush", "hay", "sheep", "cow"].includes(obstacle.type)) {
+    ctx.fillStyle = `rgba(255,255,255,${0.18 + Math.sin(phase) * 0.06})`;
+    ctx.beginPath();
+    ctx.arc(box.x + box.width * 0.63, box.y + box.height * 0.25, 2.2, 0, Math.PI * 2);
+    ctx.arc(box.x + box.width * 0.42, box.y + box.height * 0.34, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 function drawExternalObstacleSprite(obstacle) {
@@ -984,12 +1213,17 @@ function drawExternalObstacleSprite(obstacle) {
   const scale = scales[obstacle.type] || { width: 1.26, height: 1.26 };
   const boxWidth = obstacle.width * scale.width;
   const boxHeight = obstacle.height * scale.height;
-  return drawExternalSprite("obstacles", obstacle.type, EXTERNAL_OBSTACLE_CROPS, {
+  const box = {
     x: obstacle.x + obstacle.width / 2 - boxWidth / 2,
     y: obstacle.y + obstacle.height - boxHeight + 6,
     width: boxWidth,
     height: boxHeight,
-  });
+  };
+  const drawn = drawExternalSprite("obstacles", obstacle.type, EXTERNAL_OBSTACLE_CROPS, box, getObstacleSpriteMotion(obstacle));
+  if (drawn) {
+    drawObstacleSpriteEffects(obstacle, box);
+  }
+  return drawn;
 }
 
 function isMobileLandscapeLayout() {

@@ -299,6 +299,12 @@ const INTRO_CONTENT = {
 };
 const GAME_UPDATES = [
   {
+    dateTime: "2026-05-21T17:32:00+02:00",
+    displayTime: "May 21, 2026 at 17:32",
+    title: "Performance Pass",
+    description: "Gameplay keeps the same visual detail, but collision loops allocate less, inactive screens render less often, hidden tabs pause canvas work, and Hardcore lava ground animation is calmer.",
+  },
+  {
     dateTime: "2026-05-21T17:14:00+02:00",
     displayTime: "May 21, 2026 at 17:14",
     title: "Hardcore How To Play",
@@ -661,6 +667,7 @@ const hudCache = {
 
 let lastTickTime = null;
 let accumulatedTime = 0;
+let lastPassiveRenderTime = 0;
 let leaderboardPageIndex = 0;
 let leaderboardLoading = false;
 let pendingLeaderboardPageIndex = null;
@@ -1997,19 +2004,20 @@ function updateHorse() {
 
 function updateWorld() {
   state.frame += 1;
+  const bossFightActive = isBossFightActive();
   const previousArea = state.area;
   state.area = Math.floor(state.score / 2500) % 4;
   if (FRIDAY_EVENT_ACTIVE && state.area !== previousArea && state.frame > 1) {
     spawnCelebrationBurst(WIDTH * 0.5, 84, ["#ffd54f", "#f06292", "#4fc3f7", "#ffffff"]);
   }
   const baseWorldSpeed = 7.45 + Math.min(8, Math.floor(state.score / 2500)) * 0.5 + (appSettings.hardcore ? 0.65 : 0);
-  state.worldSpeed = isBossFightActive()
+  state.worldSpeed = bossFightActive
     ? 0
     : baseWorldSpeed
       + (state.rottenBoostUntil > state.frame ? 3.2 : 0)
       + (state.bullUntil > state.frame ? 4.4 : 0);
   state.scrollDistance += state.worldSpeed;
-  if (!isBossFightActive()) {
+  if (!bossFightActive) {
     state.score += 1;
   }
   const desiredMusic = getDesiredMusic();
@@ -2017,7 +2025,7 @@ function updateWorld() {
     startAreaMusic(desiredMusic, true);
   }
 
-  if (!isBossFightActive()) {
+  if (!bossFightActive) {
     state.spawnTimer -= 1;
     if (state.spawnTimer <= 0) {
       const spawned = spawnObstacle();
@@ -2027,7 +2035,7 @@ function updateWorld() {
     }
   }
 
-  if (appSettings.hardcore && !isBossFightActive()) {
+  if (appSettings.hardcore && !bossFightActive) {
     state.flyingTimer -= 1;
     if (state.flyingTimer <= 0) {
       const spawned = spawnFlyingEnemy();
@@ -2041,7 +2049,7 @@ function updateWorld() {
     }
   }
 
-  if (!isBossFightActive()) {
+  if (!bossFightActive) {
     state.coinTimer -= 1;
     if (state.coinTimer <= 0) {
       spawnCoins();
@@ -2064,7 +2072,7 @@ function updateWorld() {
   }
 
   for (const cloud of state.clouds) {
-    if (!isBossFightActive()) {
+    if (!bossFightActive) {
       cloud.x -= cloud.speed;
     }
     if (cloud.x < -120) {
@@ -2073,7 +2081,7 @@ function updateWorld() {
   }
 
   for (const bird of state.birds) {
-    if (!isBossFightActive()) {
+    if (!bossFightActive) {
       bird.x -= bird.speed;
     }
     bird.flap += 0.18;
@@ -2084,7 +2092,7 @@ function updateWorld() {
   }
 
   for (const floater of state.meadowFloaters) {
-    if (!isBossFightActive()) {
+    if (!bossFightActive) {
       floater.x -= floater.speed;
     }
     floater.phase += 0.08;
@@ -2094,7 +2102,7 @@ function updateWorld() {
     }
   }
 
-  if (!isBossFightActive()) {
+  if (!bossFightActive) {
     for (const obstacle of state.obstacles) {
       obstacle.x -= state.worldSpeed;
       if (!obstacle.passed && obstacle.x + obstacle.width < state.horse.x) {
@@ -2107,7 +2115,7 @@ function updateWorld() {
     state.obstacles = [];
   }
 
-  if (!isBossFightActive()) {
+  if (!bossFightActive) {
     for (const enemy of state.flyingEnemies) {
       enemy.phase += 0.12;
       enemy.x -= state.worldSpeed + 2.4;
@@ -2270,6 +2278,7 @@ function updateWorld() {
 
 function checkCollisions() {
   const horse = state.horse;
+  const isProtected = state.invisibleUntil > state.frame || state.invisibilityGraceUntil > state.frame;
   const horseBox = {
     left: horse.x + 20,
     right: horse.x + horse.width - 12,
@@ -2277,7 +2286,8 @@ function checkCollisions() {
     bottom: horse.y,
   };
 
-  for (const coin of [...state.coinsInWorld]) {
+  for (let index = state.coinsInWorld.length - 1; index >= 0; index -= 1) {
+    const coin = state.coinsInWorld[index];
     const nearMagnet = state.magnetUntil > state.frame
       && Math.hypot(state.horse.x + 90 - coin.x, state.horse.y - 60 - coin.y) < 52;
     const overlap = (
@@ -2287,14 +2297,15 @@ function checkCollisions() {
       horseBox.bottom > coin.y - coin.size
     );
     if (nearMagnet || overlap) {
-      state.coinsInWorld.splice(state.coinsInWorld.indexOf(coin), 1);
+      state.coinsInWorld.splice(index, 1);
       state.coins += 1;
       state.score += 8;
       playCoinSound();
     }
   }
 
-  for (const pickup of [...state.pickups]) {
+  for (let index = state.pickups.length - 1; index >= 0; index -= 1) {
+    const pickup = state.pickups[index];
     const overlap = (
       horseBox.left < pickup.x + pickup.size &&
       horseBox.right > pickup.x - pickup.size &&
@@ -2302,7 +2313,7 @@ function checkCollisions() {
       horseBox.bottom > pickup.y - pickup.size
     );
     if (overlap) {
-      state.pickups.splice(state.pickups.indexOf(pickup), 1);
+      state.pickups.splice(index, 1);
       if (pickup.kind?.startsWith("boss")) {
         activateBossWeapon(pickup.weapon);
         state.score += 60;
@@ -2321,7 +2332,9 @@ function checkCollisions() {
     }
   }
 
-  for (const projectile of [...state.projectiles]) {
+  for (let projectileIndex = state.projectiles.length - 1; projectileIndex >= 0; projectileIndex -= 1) {
+    const projectile = state.projectiles[projectileIndex];
+    let projectileRemoved = false;
     if (state.boss) {
       const bossHit = (
         projectile.x + projectile.size > state.boss.x &&
@@ -2330,7 +2343,7 @@ function checkCollisions() {
         projectile.y - projectile.size < state.boss.y + state.boss.height
       );
       if (bossHit) {
-        state.projectiles.splice(state.projectiles.indexOf(projectile), 1);
+        state.projectiles.splice(projectileIndex, 1);
         const damage = projectile.damage || 1;
         state.boss.hp -= damage;
         state.score += 35 * damage;
@@ -2339,12 +2352,13 @@ function checkCollisions() {
         if (state.boss.hp <= 0) {
           finishBossFight();
         }
+        projectileRemoved = true;
         continue;
       }
     }
 
-    let attackDestroyed = false;
-    for (const attack of [...state.bossAttacks]) {
+    for (let attackIndex = state.bossAttacks.length - 1; attackIndex >= 0; attackIndex -= 1) {
+      const attack = state.bossAttacks[attackIndex];
       const attackHit = (
         projectile.x + projectile.size > attack.x &&
         projectile.x - projectile.size < attack.x + attack.width &&
@@ -2352,21 +2366,21 @@ function checkCollisions() {
         projectile.y - projectile.size < attack.y + attack.height
       );
       if (attackHit) {
-        state.projectiles.splice(state.projectiles.indexOf(projectile), 1);
-        state.bossAttacks.splice(state.bossAttacks.indexOf(attack), 1);
+        state.projectiles.splice(projectileIndex, 1);
+        state.bossAttacks.splice(attackIndex, 1);
         spawnCelebrationBurst(attack.x + attack.width / 2, attack.y + attack.height / 2, ["#ffd54f", "#ffffff", "#66d2a7"]);
         state.score += 18;
-        attackDestroyed = true;
+        projectileRemoved = true;
         break;
       }
     }
 
-    if (attackDestroyed || !state.projectiles.includes(projectile)) {
+    if (projectileRemoved) {
       continue;
     }
 
-    let projectileUsed = false;
-    for (const enemy of [...state.flyingEnemies]) {
+    for (let enemyIndex = state.flyingEnemies.length - 1; enemyIndex >= 0; enemyIndex -= 1) {
+      const enemy = state.flyingEnemies[enemyIndex];
       const hit = (
         projectile.x + projectile.size > enemy.x &&
         projectile.x - projectile.size < enemy.x + enemy.width &&
@@ -2374,21 +2388,22 @@ function checkCollisions() {
         projectile.y - projectile.size < enemy.y + enemy.height
       );
       if (hit) {
-        state.projectiles.splice(state.projectiles.indexOf(projectile), 1);
-        state.flyingEnemies.splice(state.flyingEnemies.indexOf(enemy), 1);
+        state.projectiles.splice(projectileIndex, 1);
+        state.flyingEnemies.splice(enemyIndex, 1);
         state.score += 75;
         spawnCelebrationBurst(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, ["#66d2a7", "#ffd54f", "#ffffff"]);
         playSmashSound();
-        projectileUsed = true;
+        projectileRemoved = true;
         break;
       }
     }
 
-    if (projectileUsed || !state.projectiles.includes(projectile)) {
+    if (projectileRemoved) {
       continue;
     }
 
-    for (const obstacle of [...state.obstacles]) {
+    for (let obstacleIndex = state.obstacles.length - 1; obstacleIndex >= 0; obstacleIndex -= 1) {
+      const obstacle = state.obstacles[obstacleIndex];
       const hit = (
         projectile.x + projectile.size > obstacle.x &&
         projectile.x - projectile.size < obstacle.x + obstacle.width &&
@@ -2396,15 +2411,16 @@ function checkCollisions() {
         projectile.y - projectile.size < obstacle.y + obstacle.height
       );
       if (hit) {
-        state.projectiles.splice(state.projectiles.indexOf(projectile), 1);
-        state.obstacles.splice(state.obstacles.indexOf(obstacle), 1);
+        state.projectiles.splice(projectileIndex, 1);
+        state.obstacles.splice(obstacleIndex, 1);
         state.score += 30;
         break;
       }
     }
   }
 
-  for (const attack of [...state.bossAttacks]) {
+  for (let index = state.bossAttacks.length - 1; index >= 0; index -= 1) {
+    const attack = state.bossAttacks[index];
     const overlap = (
       horseBox.left < attack.x + attack.width - 4 &&
       horseBox.right > attack.x + 4 &&
@@ -2412,7 +2428,7 @@ function checkCollisions() {
       horseBox.bottom > attack.y + 2
     );
     if (overlap) {
-      state.bossAttacks.splice(state.bossAttacks.indexOf(attack), 1);
+      state.bossAttacks.splice(index, 1);
       damageBossFight(attack.x + attack.width / 2, attack.y + attack.height / 2);
       if (state.gameOver) {
         return;
@@ -2428,7 +2444,7 @@ function checkCollisions() {
       horseBox.bottom > enemy.y
     );
     if (overlap) {
-      if (state.invisibleUntil > state.frame || state.invisibilityGraceUntil > state.frame) {
+      if (isProtected) {
         continue;
       }
       state.gameOver = true;
@@ -2446,13 +2462,14 @@ function checkCollisions() {
       horseBox.top < state.boss.y + state.boss.height &&
       horseBox.bottom > state.boss.y
     );
-    if (bossOverlap && state.invisibleUntil <= state.frame && state.invisibilityGraceUntil <= state.frame) {
+    if (bossOverlap && !isProtected) {
       damageBossFight(state.horse.x + state.horse.width / 2, state.horse.y - state.horse.height / 2);
       return;
     }
   }
 
-  for (const obstacle of state.obstacles) {
+  for (let index = state.obstacles.length - 1; index >= 0; index -= 1) {
+    const obstacle = state.obstacles[index];
     const overlap = (
       horseBox.left < obstacle.x + obstacle.width - 6 &&
       horseBox.right > obstacle.x + 6 &&
@@ -2462,12 +2479,12 @@ function checkCollisions() {
     if (overlap) {
       if (state.bullUntil > state.frame) {
         spawnCelebrationBurst(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2, ["#ff7043", "#ffeb3b", "#ffffff"]);
-        state.obstacles.splice(state.obstacles.indexOf(obstacle), 1);
+        state.obstacles.splice(index, 1);
         state.score += 42;
         playSmashSound();
         continue;
       }
-      if (state.invisibleUntil > state.frame || state.invisibilityGraceUntil > state.frame) {
+      if (isProtected) {
         continue;
       }
       state.gameOver = true;
@@ -4754,12 +4771,14 @@ function drawGroundTexture(theme) {
   const offset = -(state.scrollDistance * 0.55) % 42;
 
   if (theme.season === "hardcore") {
+    // Hardcore keeps all lava details, but the ground pulse updates less often to reduce canvas work.
+    const groundAnimFrame = Math.floor(state.frame / 3) * 3;
     const lavaOffset = -(state.scrollDistance * 0.9) % 110;
     ctx.fillStyle = "rgba(255, 88, 24, 0.3)";
     ctx.beginPath();
     ctx.moveTo(0, GROUND_Y + 10);
     for (let x = 0; x <= WIDTH + 80; x += 80) {
-      ctx.quadraticCurveTo(x + 36, GROUND_Y + 4 + Math.sin((state.frame + x) * 0.025) * 8, x + 80, GROUND_Y + 12);
+      ctx.quadraticCurveTo(x + 36, GROUND_Y + 4 + Math.sin((groundAnimFrame + x) * 0.025) * 8, x + 80, GROUND_Y + 12);
     }
     ctx.lineTo(WIDTH, HEIGHT);
     ctx.lineTo(0, HEIGHT);
@@ -5386,11 +5405,20 @@ function restartFromGameOverOverlay() {
 }
 
 function tick(timestamp = performance.now()) {
+  if (document.hidden) {
+    accumulatedTime = 0;
+    lastTickTime = timestamp;
+    requestAnimationFrame(tick);
+    return;
+  }
+
   if (lastTickTime === null) {
     lastTickTime = timestamp;
   }
 
-  if (state.hasStarted && !state.paused && !state.gameOver) {
+  const gameIsActive = state.hasStarted && !state.paused && !state.gameOver;
+
+  if (gameIsActive) {
     const elapsed = Math.min(250, timestamp - lastTickTime);
     accumulatedTime += elapsed;
     let simulationSteps = 0;
@@ -5411,8 +5439,14 @@ function tick(timestamp = performance.now()) {
   }
 
   lastTickTime = timestamp;
-  drawScene();
-  syncHud();
+  const shouldRender = gameIsActive || timestamp - lastPassiveRenderTime >= 1000 / 30;
+  if (shouldRender) {
+    drawScene();
+    syncHud();
+    if (!gameIsActive) {
+      lastPassiveRenderTime = timestamp;
+    }
+  }
   if (state.gameOver && !state.gameOverHandled) {
     state.gameOverHandled = true;
     state.awaitingScoreEntry = true;

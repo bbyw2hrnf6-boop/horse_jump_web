@@ -196,7 +196,8 @@ class LeaderboardService {
 }
 
 const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+const mainCtx = canvas.getContext("2d");
+let ctx = mainCtx;
 
 const scoreValue = document.getElementById("scoreValue");
 const coinValue = document.getElementById("coinValue");
@@ -269,6 +270,64 @@ const MAX_SIMULATION_STEPS = 4;
 const FRIDAY_EVENT_ACTIVE = new Date().getDay() === 5;
 const PERK_COSTS = { fly: 35, magnet: 8, blaster: 32 };
 const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
+const SPRITE_SHEET_SCALE = 2.5;
+const SPRITE_PADDING = 40;
+const EXTERNAL_SPRITE_PATHS = {
+  bosses: "./assets/image2.png",
+  obstacles: "./assets/image.png",
+};
+const EXTERNAL_BOSS_FILES = {
+  crab: "./assets/sprites/bosses/crab.png",
+  biber: "./assets/sprites/bosses/biber.png",
+  alien: "./assets/sprites/bosses/alien.png",
+  dinosaur: "./assets/sprites/bosses/dinosaur.png",
+  bigfoot: "./assets/sprites/bosses/bigfoot.png",
+};
+const EXTERNAL_OBSTACLE_FILES = {
+  hay: "./assets/sprites/obstacles/hay.png",
+  crate: "./assets/sprites/obstacles/crate.png",
+  barrel: "./assets/sprites/obstacles/barrel.png",
+  bush: "./assets/sprites/obstacles/bush.png",
+  fence: "./assets/sprites/obstacles/fence.png",
+  log: "./assets/sprites/obstacles/log.png",
+  hurdle: "./assets/sprites/obstacles/hurdle.png",
+  mailbox: "./assets/sprites/obstacles/mailbox.png",
+  farmer: "./assets/sprites/obstacles/farmer.png",
+  tractor: "./assets/sprites/obstacles/tractor.png",
+  spike: "./assets/sprites/obstacles/spike.png",
+  sheep: "./assets/sprites/obstacles/sheep.png",
+  scarecrow: "./assets/sprites/obstacles/scarecrow.png",
+  rooster: "./assets/sprites/obstacles/rooster.png",
+  wagon: "./assets/sprites/obstacles/wagon.png",
+  windmill: "./assets/sprites/obstacles/windmill.png",
+  cow: "./assets/sprites/obstacles/cow.png",
+};
+const EXTERNAL_BOSS_CROPS = {
+  crab: { x: 0.026, y: 0.162, width: 0.31, height: 0.315 },
+  biber: { x: 0.36, y: 0.17, width: 0.255, height: 0.31 },
+  alien: { x: 0.64, y: 0.17, width: 0.305, height: 0.315 },
+  dinosaur: { x: 0.055, y: 0.57, width: 0.43, height: 0.355 },
+  bigfoot: { x: 0.54, y: 0.57, width: 0.40, height: 0.35 },
+};
+const EXTERNAL_OBSTACLE_CROPS = {
+  hay: { x: 0.014, y: 0.215, width: 0.11, height: 0.205 },
+  crate: { x: 0.135, y: 0.2, width: 0.095, height: 0.225 },
+  barrel: { x: 0.245, y: 0.19, width: 0.088, height: 0.24 },
+  bush: { x: 0.35, y: 0.215, width: 0.09, height: 0.215 },
+  fence: { x: 0.44, y: 0.235, width: 0.115, height: 0.18 },
+  log: { x: 0.56, y: 0.24, width: 0.12, height: 0.18 },
+  hurdle: { x: 0.695, y: 0.225, width: 0.115, height: 0.195 },
+  mailbox: { x: 0.81, y: 0.205, width: 0.08, height: 0.22 },
+  farmer: { x: 0.90, y: 0.165, width: 0.08, height: 0.27 },
+  tractor: { x: 0.01, y: 0.56, width: 0.15, height: 0.235 },
+  spike: { x: 0.18, y: 0.595, width: 0.08, height: 0.17 },
+  sheep: { x: 0.28, y: 0.55, width: 0.105, height: 0.235 },
+  scarecrow: { x: 0.392, y: 0.525, width: 0.09, height: 0.27 },
+  rooster: { x: 0.493, y: 0.535, width: 0.08, height: 0.25 },
+  wagon: { x: 0.61, y: 0.545, width: 0.135, height: 0.235 },
+  windmill: { x: 0.765, y: 0.47, width: 0.095, height: 0.32 },
+  cow: { x: 0.872, y: 0.55, width: 0.11, height: 0.245 },
+};
 const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
 const INTRO_CONTENT = {
@@ -298,6 +357,24 @@ const INTRO_CONTENT = {
   },
 };
 const GAME_UPDATES = [
+  {
+    dateTime: "2026-05-21T22:32:00+02:00",
+    displayTime: "May 21, 2026 at 22:32",
+    title: "Real Sprite Cutouts",
+    description: "The uploaded boss and obstacle sheets were split into individual transparent PNGs, and gameplay now uses those image assets before falling back to generated art.",
+  },
+  {
+    dateTime: "2026-05-21T21:55:00+02:00",
+    displayTime: "May 21, 2026 at 21:55",
+    title: "Screenshot Sprite Support",
+    description: "The game can now load boss and obstacle sprite sheets from image files, crop the characters, remove the dark sheet background, and fall back safely if assets are missing.",
+  },
+  {
+    dateTime: "2026-05-21T18:04:00+02:00",
+    displayTime: "May 21, 2026 at 18:04",
+    title: "Sprite-Sheet Renderer",
+    description: "Bosses and obstacles now render through high-resolution animated sprite sheets, keeping the detailed art while making future PNG sprite upgrades easy.",
+  },
   {
     dateTime: "2026-05-21T17:32:00+02:00",
     displayTime: "May 21, 2026 at 17:32",
@@ -542,6 +619,7 @@ const BOSS_TYPES = [
     palette: ["#8b5a35", "#4a2a18", "#24130b"],
   },
 ];
+const OBSTACLE_TYPES = ["hay", "crate", "barrel", "bush", "fence", "log", "hurdle", "mailbox", "farmer", "tractor", "spike", "sheep", "scarecrow", "rooster", "wagon", "windmill", "cow"];
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 const mobileLandscapeQuery = window.matchMedia("(max-width: 980px) and (orientation: landscape)");
 
@@ -674,6 +752,245 @@ let pendingLeaderboardPageIndex = null;
 let visibleGameUpdateCount = COLLAPSED_UPDATE_COUNT;
 let gameplayFocusTimer = null;
 let pausedBySettings = false;
+const obstacleSpriteSheets = new Map();
+const bossSpriteSheets = new Map();
+const externalSpriteState = {
+  bosses: { image: null, loaded: false, attempted: false },
+  obstacles: { image: null, loaded: false, attempted: false },
+};
+const externalSpriteFileState = new Map();
+const externalSpriteCache = new Map();
+const externalSpriteFailures = new Set();
+
+function createSpriteCanvas(width, height) {
+  if (typeof OffscreenCanvas !== "undefined") {
+    return new OffscreenCanvas(width, height);
+  }
+  const sheet = document.createElement("canvas");
+  sheet.width = width;
+  sheet.height = height;
+  return sheet;
+}
+
+function withSpriteContext(spriteCtx, drawCallback) {
+  const previousCtx = ctx;
+  ctx = spriteCtx;
+  try {
+    drawCallback();
+  } finally {
+    ctx = previousCtx;
+  }
+}
+
+function getSpriteFrame(frameCount, speed = 8, seed = 0) {
+  if (frameCount <= 1) {
+    return 0;
+  }
+  return Math.floor((state.frame + seed) / speed) % frameCount;
+}
+
+function loadExternalSpriteSheets() {
+  loadExternalSpriteFiles("bosses", EXTERNAL_BOSS_FILES);
+  loadExternalSpriteFiles("obstacles", EXTERNAL_OBSTACLE_FILES);
+
+  for (const [kind, path] of Object.entries(EXTERNAL_SPRITE_PATHS)) {
+    const sheet = externalSpriteState[kind];
+    if (!sheet || sheet.attempted) {
+      continue;
+    }
+    sheet.attempted = true;
+    const image = new Image();
+    image.onload = () => {
+      sheet.image = image;
+      sheet.loaded = true;
+      externalSpriteFailures.clear();
+    };
+    image.onerror = () => {
+      sheet.loaded = false;
+    };
+    image.src = path;
+  }
+}
+
+function loadExternalSpriteFiles(kind, fileMap) {
+  for (const [type, path] of Object.entries(fileMap)) {
+    const key = `${kind}|${type}`;
+    if (externalSpriteFileState.has(key)) {
+      continue;
+    }
+    const entry = { image: null, loaded: false };
+    externalSpriteFileState.set(key, entry);
+    const image = new Image();
+    image.onload = () => {
+      entry.image = image;
+      entry.loaded = true;
+    };
+    image.onerror = () => {
+      entry.loaded = false;
+    };
+    image.src = path;
+  }
+}
+
+function getExternalSpriteFile(kind, type) {
+  const entry = externalSpriteFileState.get(`${kind}|${type}`);
+  return entry?.loaded ? entry.image : null;
+}
+
+function estimateBackdropColor(imageData, width) {
+  const data = imageData.data;
+  const step = Math.max(1, Math.floor(width / 16));
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let count = 0;
+  for (let x = 0; x < width; x += step) {
+    const index = x * 4;
+    r += data[index];
+    g += data[index + 1];
+    b += data[index + 2];
+    count += 1;
+  }
+  return {
+    r: count ? r / count : 9,
+    g: count ? g / count : 10,
+    b: count ? b / count : 24,
+  };
+}
+
+function removeSpriteSheetBackdrop(spriteCtx, width, height) {
+  const imageData = spriteCtx.getImageData(0, 0, width, height);
+  const background = estimateBackdropColor(imageData, width);
+  const data = imageData.data;
+  for (let index = 0; index < data.length; index += 4) {
+    const distance =
+      Math.abs(data[index] - background.r) +
+      Math.abs(data[index + 1] - background.g) +
+      Math.abs(data[index + 2] - background.b);
+    if (distance < 30) {
+      data[index + 3] = 0;
+    } else if (distance < 58) {
+      data[index + 3] = Math.min(data[index + 3], Math.round((distance - 30) * 9));
+    }
+  }
+  spriteCtx.putImageData(imageData, 0, 0);
+}
+
+function getExternalSpriteCanvas(kind, type, cropMap) {
+  const sheetState = externalSpriteState[kind];
+  const image = sheetState?.loaded ? sheetState.image : null;
+  const crop = cropMap[type];
+  if (!image || !crop) {
+    return null;
+  }
+
+  const cacheKey = `${kind}|${type}|${image.naturalWidth}x${image.naturalHeight}`;
+  if (externalSpriteCache.has(cacheKey)) {
+    return externalSpriteCache.get(cacheKey);
+  }
+  if (externalSpriteFailures.has(cacheKey)) {
+    return null;
+  }
+
+  const sourceX = Math.round(crop.x * image.naturalWidth);
+  const sourceY = Math.round(crop.y * image.naturalHeight);
+  const sourceWidth = Math.round(crop.width * image.naturalWidth);
+  const sourceHeight = Math.round(crop.height * image.naturalHeight);
+  if (sourceWidth <= 0 || sourceHeight <= 0) {
+    return null;
+  }
+
+  const sprite = createSpriteCanvas(sourceWidth, sourceHeight);
+  const spriteCtx = sprite.getContext("2d");
+  try {
+    spriteCtx.imageSmoothingEnabled = false;
+    spriteCtx.clearRect(0, 0, sourceWidth, sourceHeight);
+    spriteCtx.drawImage(
+      image,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      0,
+      0,
+      sourceWidth,
+      sourceHeight,
+    );
+    removeSpriteSheetBackdrop(spriteCtx, sourceWidth, sourceHeight);
+  } catch (error) {
+    externalSpriteFailures.add(cacheKey);
+    return null;
+  }
+
+  externalSpriteCache.set(cacheKey, sprite);
+  return sprite;
+}
+
+function getDrawableSize(drawable) {
+  return {
+    width: drawable.naturalWidth || drawable.width,
+    height: drawable.naturalHeight || drawable.height,
+  };
+}
+
+function drawExternalSprite(kind, type, cropMap, box) {
+  const sprite = getExternalSpriteFile(kind, type) || getExternalSpriteCanvas(kind, type, cropMap);
+  if (!sprite) {
+    return false;
+  }
+
+  const spriteSize = getDrawableSize(sprite);
+  const ratio = Math.min(box.width / spriteSize.width, box.height / spriteSize.height);
+  const drawWidth = spriteSize.width * ratio;
+  const drawHeight = spriteSize.height * ratio;
+  const drawX = box.x + (box.width - drawWidth) / 2;
+  const drawY = box.y + box.height - drawHeight;
+  const previousSmoothing = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(sprite, drawX, drawY, drawWidth, drawHeight);
+  ctx.imageSmoothingEnabled = previousSmoothing;
+  return true;
+}
+
+function drawExternalBossSprite(boss) {
+  const scales = {
+    crab: { width: 1.65, height: 1.56 },
+    biber: { width: 1.62, height: 1.58 },
+    alien: { width: 1.7, height: 1.7 },
+    dinosaur: { width: 1.86, height: 1.72 },
+    bigfoot: { width: 1.9, height: 1.7 },
+  };
+  const scale = scales[boss.type] || { width: 1.65, height: 1.6 };
+  const boxWidth = boss.width * scale.width;
+  const boxHeight = boss.height * scale.height;
+  return drawExternalSprite("bosses", boss.type, EXTERNAL_BOSS_CROPS, {
+    x: boss.x + boss.width / 2 - boxWidth / 2,
+    y: boss.y + boss.height - boxHeight + 24,
+    width: boxWidth,
+    height: boxHeight,
+  });
+}
+
+function drawExternalObstacleSprite(obstacle) {
+  const scales = {
+    farmer: { width: 1.25, height: 1.42 },
+    tractor: { width: 1.3, height: 1.28 },
+    windmill: { width: 1.22, height: 1.48 },
+    scarecrow: { width: 1.18, height: 1.35 },
+    spike: { width: 1.14, height: 1.16 },
+    cow: { width: 1.24, height: 1.22 },
+    sheep: { width: 1.22, height: 1.2 },
+  };
+  const scale = scales[obstacle.type] || { width: 1.26, height: 1.26 };
+  const boxWidth = obstacle.width * scale.width;
+  const boxHeight = obstacle.height * scale.height;
+  return drawExternalSprite("obstacles", obstacle.type, EXTERNAL_OBSTACLE_CROPS, {
+    x: obstacle.x + obstacle.width / 2 - boxWidth / 2,
+    y: obstacle.y + obstacle.height - boxHeight + 6,
+    width: boxWidth,
+    height: boxHeight,
+  });
+}
 
 function isMobileLandscapeLayout() {
   return mobileLandscapeQuery.matches;
@@ -1614,8 +1931,7 @@ function spawnObstacle() {
     return false;
   }
   const difficulty = Math.min(8, Math.floor(state.score / 1200));
-  const types = ["hay", "crate", "barrel", "bush", "fence", "log", "hurdle", "mailbox", "farmer", "tractor", "spike", "sheep", "scarecrow", "rooster", "wagon", "windmill", "cow"];
-  const availableTypes = types.slice(0, Math.min(types.length, 7 + difficulty));
+  const availableTypes = OBSTACLE_TYPES.slice(0, Math.min(OBSTACLE_TYPES.length, 7 + difficulty));
   const cowUnlocked = state.score >= 2600;
   const spawnCow = cowUnlocked && Math.random() < 0.18;
   const type = spawnCow
@@ -2763,7 +3079,7 @@ function drawBossPixelOverlay(boss) {
   }
 }
 
-function drawBoss(boss) {
+function drawBossVector(boss) {
   ctx.save();
   ctx.translate(boss.x, boss.y);
   ctx.fillStyle = "rgba(0,0,0,0.18)";
@@ -3042,15 +3358,142 @@ function drawBoss(boss) {
 
   drawBossPixelOverlay(boss);
 
+  if (!boss.hideHp) {
+    const hpWidth = boss.width - 24;
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
+    ctx.fillRect(12, 4, hpWidth, 8);
+    ctx.fillStyle = "#66d2a7";
+    ctx.fillRect(12, 4, hpWidth * Math.max(0, boss.hp / boss.maxHp), 8);
+    ctx.strokeStyle = "#251520";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(12, 4, hpWidth, 8);
+  }
+  ctx.restore();
+}
+
+function getBossSpriteSheet(boss) {
+  const frameCount = 10;
+  const frameWidth = Math.ceil(boss.width + SPRITE_PADDING * 2);
+  const frameHeight = Math.ceil(boss.height + SPRITE_PADDING * 2 + 38);
+  const key = `${boss.type}|${Math.ceil(boss.width)}|${Math.ceil(boss.height)}|${boss.palette?.join("-") || ""}`;
+  if (bossSpriteSheets.has(key)) {
+    return bossSpriteSheets.get(key);
+  }
+
+  const sheet = createSpriteCanvas(
+    Math.ceil(frameWidth * frameCount * SPRITE_SHEET_SCALE),
+    Math.ceil(frameHeight * SPRITE_SHEET_SCALE),
+  );
+  const spriteCtx = sheet.getContext("2d");
+  spriteCtx.imageSmoothingEnabled = true;
+  spriteCtx.imageSmoothingQuality = "high";
+
+  const previousFrame = state.frame;
+  const worldX = 220;
+  const worldY = 180;
+  for (let frame = 0; frame < frameCount; frame += 1) {
+    withSpriteContext(spriteCtx, () => {
+      ctx.save();
+      ctx.setTransform(
+        SPRITE_SHEET_SCALE,
+        0,
+        0,
+        SPRITE_SHEET_SCALE,
+        frame * frameWidth * SPRITE_SHEET_SCALE,
+        0,
+      );
+      ctx.clearRect(0, 0, frameWidth, frameHeight);
+      ctx.translate(-worldX + SPRITE_PADDING, -worldY + SPRITE_PADDING);
+      state.frame = frame * 8;
+      drawBossVector({
+        ...boss,
+        x: worldX,
+        y: worldY,
+        hp: boss.maxHp || boss.hp,
+        maxHp: boss.maxHp || boss.hp,
+        hideHp: true,
+        phase: (frame / frameCount) * Math.PI * 2,
+      });
+      ctx.restore();
+    });
+  }
+  state.frame = previousFrame;
+
+  const spriteSheet = {
+    sheet,
+    frameCount,
+    frameWidth,
+    frameHeight,
+    sourceFrameWidth: frameWidth * SPRITE_SHEET_SCALE,
+    sourceFrameHeight: frameHeight * SPRITE_SHEET_SCALE,
+  };
+  bossSpriteSheets.set(key, spriteSheet);
+  return spriteSheet;
+}
+
+function drawBoss(boss) {
+  if (!drawExternalBossSprite(boss)) {
+    const sprite = getBossSpriteSheet(boss);
+    const frame = getSpriteFrame(sprite.frameCount, 6);
+    ctx.drawImage(
+      sprite.sheet,
+      frame * sprite.sourceFrameWidth,
+      0,
+      sprite.sourceFrameWidth,
+      sprite.sourceFrameHeight,
+      boss.x - SPRITE_PADDING,
+      boss.y - SPRITE_PADDING,
+      sprite.frameWidth,
+      sprite.frameHeight,
+    );
+  }
+
   const hpWidth = boss.width - 24;
+  ctx.save();
   ctx.fillStyle = "rgba(0,0,0,0.28)";
-  ctx.fillRect(12, 4, hpWidth, 8);
+  ctx.fillRect(boss.x + 12, boss.y + 4, hpWidth, 8);
   ctx.fillStyle = "#66d2a7";
-  ctx.fillRect(12, 4, hpWidth * Math.max(0, boss.hp / boss.maxHp), 8);
+  ctx.fillRect(boss.x + 12, boss.y + 4, hpWidth * Math.max(0, boss.hp / boss.maxHp), 8);
   ctx.strokeStyle = "#251520";
   ctx.lineWidth = 1.5;
-  ctx.strokeRect(12, 4, hpWidth, 8);
+  ctx.strokeRect(boss.x + 12, boss.y + 4, hpWidth, 8);
   ctx.restore();
+}
+
+function scheduleSpriteWarmup() {
+  const jobs = [
+    ...OBSTACLE_TYPES.map((type) => () => getObstacleSpriteSheet(buildObstacle(type, -9999))),
+    ...BOSS_TYPES.map((bossType) => () => getBossSpriteSheet({
+      x: -9999,
+      y: bossType.y,
+      width: bossType.width,
+      height: bossType.height,
+      hp: bossType.hp,
+      maxHp: bossType.hp,
+      type: bossType.type,
+      label: bossType.label,
+      palette: bossType.palette,
+      phase: 0,
+    })),
+  ];
+
+  const runJobs = (deadline = null) => {
+    let didWork = 0;
+    while (jobs.length && didWork < 2 && (!deadline?.timeRemaining || deadline.timeRemaining() > 4)) {
+      jobs.shift()();
+      didWork += 1;
+    }
+    if (!jobs.length) {
+      return;
+    }
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(runJobs, { timeout: 1200 });
+    } else {
+      window.setTimeout(runJobs, 24);
+    }
+  };
+
+  runJobs();
 }
 
 function drawBossAttack(attack) {
@@ -3638,7 +4081,7 @@ function drawInsetShadow(x, y, width, height, radius = 12) {
   ctx.stroke();
 }
 
-function drawObstacle(obstacle) {
+function drawObstacleVector(obstacle) {
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
   ctx.fillStyle = "rgba(0,0,0,0.12)";
@@ -4249,6 +4692,83 @@ function drawObstacle(obstacle) {
     ctx.lineWidth = 2;
     ctx.strokeRect(obstacle.x, obstacle.y, obstacle.width, 14);
   }
+}
+
+function getObstacleSpriteSheet(obstacle) {
+  const frameCount = 8;
+  const frameWidth = Math.ceil(obstacle.width + SPRITE_PADDING * 2);
+  const frameHeight = Math.ceil(obstacle.height + SPRITE_PADDING * 2);
+  const key = `${obstacle.type}|${Math.ceil(obstacle.width)}|${Math.ceil(obstacle.height)}|${obstacle.color || ""}|${appSettings.darkMode ? 1 : 0}`;
+  if (obstacleSpriteSheets.has(key)) {
+    return obstacleSpriteSheets.get(key);
+  }
+
+  const sheet = createSpriteCanvas(
+    Math.ceil(frameWidth * frameCount * SPRITE_SHEET_SCALE),
+    Math.ceil(frameHeight * SPRITE_SHEET_SCALE),
+  );
+  const spriteCtx = sheet.getContext("2d");
+  spriteCtx.imageSmoothingEnabled = true;
+  spriteCtx.imageSmoothingQuality = "high";
+
+  const previousFrame = state.frame;
+  const worldX = 220;
+  const worldY = GROUND_Y - obstacle.height;
+  for (let frame = 0; frame < frameCount; frame += 1) {
+    withSpriteContext(spriteCtx, () => {
+      ctx.save();
+      ctx.setTransform(
+        SPRITE_SHEET_SCALE,
+        0,
+        0,
+        SPRITE_SHEET_SCALE,
+        frame * frameWidth * SPRITE_SHEET_SCALE,
+        0,
+      );
+      ctx.clearRect(0, 0, frameWidth, frameHeight);
+      ctx.translate(-worldX + SPRITE_PADDING, -worldY + SPRITE_PADDING);
+      state.frame = frame * 8;
+      drawObstacleVector({
+        ...obstacle,
+        x: worldX,
+        y: worldY,
+        animSeed: 0,
+      });
+      ctx.restore();
+    });
+  }
+  state.frame = previousFrame;
+
+  const spriteSheet = {
+    sheet,
+    frameCount,
+    frameWidth,
+    frameHeight,
+    sourceFrameWidth: frameWidth * SPRITE_SHEET_SCALE,
+    sourceFrameHeight: frameHeight * SPRITE_SHEET_SCALE,
+  };
+  obstacleSpriteSheets.set(key, spriteSheet);
+  return spriteSheet;
+}
+
+function drawObstacle(obstacle) {
+  if (drawExternalObstacleSprite(obstacle)) {
+    return;
+  }
+
+  const sprite = getObstacleSpriteSheet(obstacle);
+  const frame = getSpriteFrame(sprite.frameCount, 8, obstacle.animSeed || 0);
+  ctx.drawImage(
+    sprite.sheet,
+    frame * sprite.sourceFrameWidth,
+    0,
+    sprite.sourceFrameWidth,
+    sprite.sourceFrameHeight,
+    obstacle.x - SPRITE_PADDING,
+    obstacle.y - SPRITE_PADDING,
+    sprite.frameWidth,
+    sprite.frameHeight,
+  );
 }
 
 function drawCoin(coin) {
@@ -5745,5 +6265,7 @@ renderGameUpdates();
 renderLeaderboard();
 syncHud();
 syncFullscreenButton();
+loadExternalSpriteSheets();
+scheduleSpriteWarmup();
 refocusGameplayAfterViewportChange();
 tick();

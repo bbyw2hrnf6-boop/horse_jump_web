@@ -22,6 +22,8 @@ class LeaderboardService {
     this.firebaseReady = false;
     this.firebaseFns = null;
     this.pageCursors = new Map();
+    this.lastError = "";
+    this.lastWriteOnline = null;
     this.ready = this.initFirebase();
   }
 
@@ -43,7 +45,8 @@ class LeaderboardService {
       this.firebaseFns = firestoreModule;
       this.firebaseReady = true;
       this.mode = "firebase";
-    } catch (_error) {
+    } catch (error) {
+      this.lastError = this.formatError(error);
       this.mode = "local";
     }
   }
@@ -56,6 +59,29 @@ class LeaderboardService {
     return [...scores].sort((a, b) => b.score - a.score);
   }
 
+  formatError(error) {
+    const code = error?.code ? `${error.code}: ` : "";
+    return `${code}${error?.message || error || "unknown error"}`.replace(/\.+$/, ".");
+  }
+
+  scoreKey(entry) {
+    return `${entry.gameMode}|${entry.name}|${entry.score}`;
+  }
+
+  mergeScores(...scoreLists) {
+    const merged = new Map();
+    for (const scores of scoreLists) {
+      for (const score of scores) {
+        const key = this.scoreKey(score);
+        const previous = merged.get(key);
+        if (!previous || (!previous.createdAt && score.createdAt)) {
+          merged.set(key, score);
+        }
+      }
+    }
+    return this.sortScores([...merged.values()]);
+  }
+
   normalizeScoreEntry(data) {
     const gameMode = data.gameMode === SCORE_MODES.hardcore ? SCORE_MODES.hardcore : SCORE_MODES.normal;
     return {
@@ -63,6 +89,7 @@ class LeaderboardService {
       score: Number.isFinite(data.score) ? data.score : 0,
       gameMode,
       createdAt: data.createdAt?.toDate?.()?.toISOString?.() || (typeof data.createdAt === "string" ? data.createdAt : null),
+      localOnly: Boolean(data.localOnly),
     };
   }
 
@@ -83,16 +110,19 @@ class LeaderboardService {
     await this.ready;
     if (this.firebaseReady && this.db && this.firebaseFns) {
       try {
-        const scores = await this.readFirebaseScores(gameMode);
+        const firebaseScores = await this.readFirebaseScores(gameMode);
+        const localScores = this.readLocalScores(gameMode);
+        const scores = this.mergeScores(firebaseScores, localScores);
         const start = pageIndex * pageSize;
-        this.mode = "firebase";
+        this.mode = localScores.length ? "firebase+local" : "firebase";
         return {
           scores: scores.slice(start, start + pageSize),
           pageIndex,
           hasPrevious: pageIndex > 0,
           hasNext: start + pageSize < scores.length,
         };
-      } catch (_error) {
+      } catch (error) {
+        this.lastError = this.formatError(error);
         this.mode = "local-fallback";
       }
     }
@@ -113,6 +143,8 @@ class LeaderboardService {
 
   async submitScore(name, score, gameMode = SCORE_MODES.normal) {
     const safeName = (name || "Player").trim().slice(0, 14) || "Player";
+    this.lastWriteOnline = false;
+    this.lastError = "";
     await this.ready;
     if (this.firebaseReady && this.db && this.firebaseFns) {
       try {
@@ -124,8 +156,10 @@ class LeaderboardService {
         });
         this.mode = "firebase";
         this.resetPagination();
+        this.lastWriteOnline = true;
         return this.listTopScores(gameMode);
-      } catch (_error) {
+      } catch (error) {
+        this.lastError = this.formatError(error);
         this.mode = "local-fallback";
       }
     }
@@ -135,6 +169,7 @@ class LeaderboardService {
       score,
       gameMode,
       createdAt: new Date().toISOString(),
+      localOnly: true,
     });
     entries.sort((a, b) => b.score - a.score);
     const trimmed = entries.slice(0, 500);
@@ -227,6 +262,12 @@ const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
 const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
 const GAME_UPDATES = [
+  {
+    dateTime: "2026-05-20T23:04:00+02:00",
+    displayTime: "May 20, 2026 at 23:04",
+    title: "Leaderboard Save Diagnostics",
+    description: "Scores now fall back visibly to local saves when Firebase blocks online writes, while normal and hardcore filters stay separated.",
+  },
   {
     dateTime: "2026-05-20T21:23:00+02:00",
     displayTime: "May 20, 2026 at 21:23",
@@ -444,6 +485,7 @@ const state = {
   forcedScoreSave: false,
   scoreSaveDecisionPending: false,
   scoreSubmissionInProgress: false,
+  scoreSaveMessage: "",
   hasStarted: false,
   runMode: SCORE_MODES.normal,
   paused: false,
@@ -932,6 +974,7 @@ function resetGame() {
   state.forcedScoreSave = false;
   state.scoreSaveDecisionPending = false;
   state.scoreSubmissionInProgress = false;
+  state.scoreSaveMessage = "";
   state.paused = false;
   state.status = FRIDAY_EVENT_ACTIVE
     ? "Friday special active: find meat to become a bull."
@@ -4145,7 +4188,7 @@ function syncHud() {
       ? "Checking Score..."
       : (state.forcedScoreSave ? "Save Top Score" : "Save Score")))
     : "Save";
-  const promptText = state.awaitingScoreEntry
+  const promptText = state.scoreSaveMessage || (state.awaitingScoreEntry
     ? (state.scoreSubmissionInProgress
       ? "Saving your score..."
       : (state.scoreSaveDecisionPending
@@ -4155,7 +4198,7 @@ function syncHud() {
         : "Enter a name to save your score, or restart to skip saving.")))
     : (state.gameOver && state.scoreSubmitted
       ? "Score saved. Restart when you are ready for another run."
-      : "Enter a name after game over to save your score.");
+      : "Enter a name after game over to save your score."));
   const finalScoreText = `${state.score}`;
   const overlayHidden = !state.gameOver;
   const inputDisabled = !state.awaitingScoreEntry;
@@ -4355,7 +4398,10 @@ async function renderLeaderboard(pageIndex = leaderboardPageIndex) {
       leaderboardPageLabel.textContent = `Page ${page.pageIndex + 1}`;
     }
     if (leaderboardMode) {
-      leaderboardMode.textContent = `Mode: ${leaderboard.mode} ${modeLabel.toLowerCase()} scores only`;
+      const sourceNote = leaderboard.mode === "firebase+local"
+        ? "firebase plus local unsynced saves"
+        : leaderboard.mode;
+      leaderboardMode.textContent = `Mode: ${sourceNote} ${modeLabel.toLowerCase()} scores only`;
     }
   } catch (_error) {
     leaderboardList.innerHTML = "";
@@ -4446,12 +4492,18 @@ async function submitCurrentScore() {
   try {
     await leaderboard.submitScore(enteredName, state.score, state.runMode);
     state.awaitingScoreEntry = false;
-    state.status = `Saved score for ${enteredName}. Press Space or tap the game to play again.`;
+    const savedOnline = leaderboard.lastWriteOnline === true;
+    const modeLabel = getScoreModeLabel(state.runMode);
+    state.scoreSaveMessage = savedOnline
+      ? `${modeLabel} score saved online for ${enteredName}.`
+      : `${modeLabel} score saved locally only. Firebase online write is blocked: ${leaderboard.lastError || "permission denied"}.`;
+    state.status = state.scoreSaveMessage;
     playSaveSound();
     leaderboard.resetPagination();
     await renderLeaderboard(0);
   } catch (_error) {
     state.scoreSubmitted = false;
+    state.scoreSaveMessage = "";
     state.status = "Score could not be saved. Please try again.";
   } finally {
     state.scoreSubmissionInProgress = false;
@@ -4506,6 +4558,7 @@ function tick(timestamp = performance.now()) {
   if (state.gameOver && !state.gameOverHandled) {
     state.gameOverHandled = true;
     state.awaitingScoreEntry = true;
+    state.scoreSaveMessage = "";
     state.scoreSaveDecisionPending = true;
     state.forcedScoreSave = true;
     state.status = "Checking leaderboard position...";

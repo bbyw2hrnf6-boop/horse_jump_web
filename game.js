@@ -264,6 +264,12 @@ const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
 const GAME_UPDATES = [
   {
+    dateTime: "2026-05-21T16:58:00+02:00",
+    displayTime: "May 21, 2026 at 16:58",
+    title: "Pixel Boss Art",
+    description: "Hardcore bosses now use image-inspired pixel-art drawings with animated claws, fur, UFO beams, roaring jaws, and left-facing horse movement in boss fights.",
+  },
+  {
     dateTime: "2026-05-21T16:36:00+02:00",
     displayTime: "May 21, 2026 at 16:36",
     title: "Fullscreen And Bigger Bosses",
@@ -481,7 +487,7 @@ const BOSS_TYPES = [
   },
   {
     type: "bigfoot",
-    label: "Bigfoot",
+    label: "Bigfood",
     hp: 230,
     width: 196,
     height: 128,
@@ -535,6 +541,7 @@ const state = {
     vy: 0,
     width: 118,
     height: 92,
+    facing: 1,
     jumpsLeft: 2,
     onGround: true,
   },
@@ -1174,6 +1181,7 @@ function resetGame() {
     x: DEFAULT_HORSE_X,
     y: GROUND_Y,
     vy: 0,
+    facing: 1,
     jumpsLeft: 2,
     onGround: true,
   });
@@ -1887,6 +1895,7 @@ function activateBullPower() {
 function updateHorse() {
   const horse = state.horse;
   if (isBossFightActive()) {
+    const previousX = horse.x;
     const horizontalSpeed = state.input.touchTargetX === null ? 8.5 : 6.8;
     if (state.input.left) horse.x -= horizontalSpeed;
     if (state.input.right) horse.x += horizontalSpeed;
@@ -1899,9 +1908,16 @@ function updateHorse() {
       }
     }
     horse.x = Math.max(BOSS_ARENA_MIN_X, Math.min(BOSS_ARENA_MAX_X, horse.x));
+    if (horse.x < previousX - 0.35) {
+      horse.facing = -1;
+    } else if (horse.x > previousX + 0.35) {
+      horse.facing = 1;
+    }
   } else if (Math.abs(horse.x - DEFAULT_HORSE_X) > 0.5) {
+    horse.facing = 1;
     horse.x += (DEFAULT_HORSE_X - horse.x) * 0.12;
   } else {
+    horse.facing = 1;
     horse.x = DEFAULT_HORSE_X;
   }
 
@@ -2470,6 +2486,210 @@ function drawFlyingEnemy(enemy) {
   ctx.restore();
 }
 
+function drawBossPixelBase(boss) {
+  const baseY = boss.height + 16;
+  const platformColor = boss.type === "alien" ? "#303846" : (boss.type === "crab" ? "#9b6a3d" : "#5b442f");
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.beginPath();
+  ctx.ellipse(boss.width * 0.48, baseY + 6, boss.width * 0.52, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = platformColor;
+  ctx.strokeStyle = "#24170f";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.roundRect(4, boss.height - 4, boss.width - 8, 24, 8);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = boss.type === "alien" ? "#94a3b8" : "#7b5a35";
+  for (let index = 0; index < 9; index += 1) {
+    const chipX = 14 + index * Math.max(12, boss.width / 11);
+    const chipY = boss.height + (index % 3) * 5;
+    ctx.fillRect(chipX, chipY, 8, 3);
+  }
+  if (boss.type === "alien") {
+    const beam = ctx.createLinearGradient(boss.width * 0.5, 72, boss.width * 0.5, boss.height + 24);
+    beam.addColorStop(0, "rgba(163, 255, 91, 0.42)");
+    beam.addColorStop(1, "rgba(163, 255, 91, 0)");
+    ctx.fillStyle = beam;
+    ctx.beginPath();
+    ctx.moveTo(boss.width * 0.34, 74);
+    ctx.lineTo(boss.width * 0.66, 74);
+    ctx.lineTo(boss.width * 0.76, boss.height + 18);
+    ctx.lineTo(boss.width * 0.24, boss.height + 18);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+function drawBossPixelHighlights(points) {
+  for (const [x, y, width, height, color] of points) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, width, height);
+  }
+}
+
+function drawBossPixelOverlay(boss) {
+  const pulse = Math.sin(boss.phase * 2);
+  const blink = Math.floor(state.frame / 10) % 2;
+  if (boss.type === "crab") {
+    ctx.fillStyle = "#ff6b3d";
+    ctx.strokeStyle = "#66170d";
+    ctx.lineWidth = 4;
+    for (const side of [-1, 1]) {
+      const clawX = boss.width * 0.48 + side * (74 + pulse * 5);
+      const clawY = 32 - Math.max(0, pulse) * 7;
+      ctx.beginPath();
+      ctx.ellipse(clawX, clawY, 24, 38, side * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#b52d19";
+      ctx.beginPath();
+      ctx.moveTo(clawX - side * 6, clawY - 7);
+      ctx.quadraticCurveTo(clawX + side * 36, clawY - 38, clawX + side * 14, clawY + 13);
+      ctx.quadraticCurveTo(clawX + side * 2, clawY + 4, clawX - side * 6, clawY - 7);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#ff6b3d";
+    }
+    ctx.fillStyle = "#ffd166";
+    for (let spike = 0; spike < 7; spike += 1) {
+      ctx.beginPath();
+      ctx.moveTo(42 + spike * 15, 29);
+      ctx.lineTo(48 + spike * 15, 10 + (spike % 2) * 5);
+      ctx.lineTo(56 + spike * 15, 29);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    drawBossPixelHighlights([
+      [34, 50, 7, 5, "#ffb199"],
+      [78, 38, 8, 5, "#ffb199"],
+      [110, 58, 6, 4, "#ffd0b8"],
+      [145, 45, 7, 5, "#ffb199"],
+    ]);
+  } else if (boss.type === "biber") {
+    ctx.fillStyle = "#5a351f";
+    ctx.strokeStyle = "#2b170d";
+    ctx.lineWidth = 5;
+    ctx.save();
+    ctx.translate(108, 60 + pulse * 2);
+    ctx.rotate(-0.07 + pulse * 0.02);
+    ctx.beginPath();
+    ctx.roundRect(-10, -10, 82, 24, 9);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "#b7793f";
+    ctx.lineWidth = 2;
+    for (let line = 0; line < 5; line += 1) {
+      ctx.beginPath();
+      ctx.moveTo(0 + line * 14, -7);
+      ctx.lineTo(8 + line * 14, 12);
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.fillStyle = "#3a2112";
+    for (let fur = 0; fur < 22; fur += 1) {
+      const fx = 32 + (fur * 19) % 112;
+      const fy = 28 + (fur * 13) % 70;
+      ctx.fillRect(fx, fy, 5, 9);
+    }
+    ctx.fillStyle = "#17100b";
+    ctx.beginPath();
+    ctx.arc(78, 56, 5 + blink, 0, Math.PI * 2);
+    ctx.arc(101, 56, 5 + blink, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (boss.type === "alien") {
+    ctx.strokeStyle = "rgba(201, 255, 255, 0.76)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(68, 43, 45, Math.PI * 1.05, Math.PI * 1.95);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(185, 255, 105, 0.24)";
+    ctx.beginPath();
+    ctx.ellipse(68, 43, 34, 25, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#151527";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(100, 50);
+    ctx.quadraticCurveTo(126, 35 + pulse * 8, 125, 19);
+    ctx.stroke();
+    ctx.fillStyle = "#b7ff5e";
+    ctx.beginPath();
+    ctx.arc(126, 18, 5, 0, Math.PI * 2);
+    ctx.fill();
+    drawBossPixelHighlights([
+      [35, 18, 7, 7, "#ffffff"],
+      [45, 15, 4, 4, "#ffffff"],
+      [50, 86, 8, 5, "#f0abfc"],
+      [82, 89, 8, 5, "#22d3ee"],
+      [114, 86, 8, 5, "#f0abfc"],
+    ]);
+  } else if (boss.type === "bigfoot") {
+    ctx.fillStyle = "#2b170d";
+    for (let fur = 0; fur < 34; fur += 1) {
+      const fx = 34 + (fur * 23) % 138;
+      const fy = 20 + (fur * 17) % 92;
+      ctx.fillRect(fx, fy, 5, 13);
+    }
+    ctx.fillStyle = "#f8dfbc";
+    for (let tooth = 0; tooth < 5; tooth += 1) {
+      ctx.beginPath();
+      ctx.moveTo(78 + tooth * 7, 82);
+      ctx.lineTo(82 + tooth * 7, 94);
+      ctx.lineTo(86 + tooth * 7, 82);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.strokeStyle = "#2b170d";
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(78, 43);
+    ctx.lineTo(91, 51);
+    ctx.moveTo(113, 43);
+    ctx.lineTo(101, 51);
+    ctx.stroke();
+    ctx.fillStyle = "#1a0f0a";
+    ctx.beginPath();
+    ctx.arc(90, 64, 4 + blink, 0, Math.PI * 2);
+    ctx.arc(110, 64, 4 + blink, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    const jawOpen = 8 + Math.max(0, pulse) * 8;
+    ctx.fillStyle = "#173d1f";
+    ctx.strokeStyle = "#0d2413";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(42, 48);
+    ctx.quadraticCurveTo(-16, 52 + pulse * 8, -2, 84);
+    ctx.stroke();
+    ctx.fillStyle = "#263f1d";
+    for (let scale = 0; scale < 22; scale += 1) {
+      const sx = 38 + (scale * 17) % 112;
+      const sy = 42 + (scale * 11) % 48;
+      ctx.fillRect(sx, sy, 6, 5);
+    }
+    ctx.fillStyle = "#f7ead0";
+    for (let tooth = 0; tooth < 8; tooth += 1) {
+      ctx.beginPath();
+      ctx.moveTo(boss.width - 34 + tooth * 5, 56);
+      ctx.lineTo(boss.width - 31 + tooth * 5, 56 + jawOpen);
+      ctx.lineTo(boss.width - 28 + tooth * 5, 56);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.fillStyle = "#d44b2e";
+    ctx.beginPath();
+    ctx.ellipse(boss.width - 20, 68 + jawOpen * 0.35, 16, 7, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    drawBossPixelHighlights([
+      [72, 30, 7, 5, "#a4bf52"],
+      [94, 39, 6, 4, "#a4bf52"],
+      [118, 52, 7, 5, "#c6d36c"],
+    ]);
+  }
+}
+
 function drawBoss(boss) {
   ctx.save();
   ctx.translate(boss.x, boss.y);
@@ -2477,6 +2697,7 @@ function drawBoss(boss) {
   ctx.beginPath();
   ctx.ellipse(boss.width * 0.48, boss.height + 8, boss.width * 0.42, 12, 0, 0, Math.PI * 2);
   ctx.fill();
+  drawBossPixelBase(boss);
   ctx.strokeStyle = boss.palette?.[2] || "#251520";
   ctx.lineWidth = 4;
 
@@ -2745,6 +2966,8 @@ function drawBoss(boss) {
     ctx.lineTo(122, boss.height + 4);
     ctx.stroke();
   }
+
+  drawBossPixelOverlay(boss);
 
   const hpWidth = boss.width - 24;
   ctx.fillStyle = "rgba(0,0,0,0.28)";
@@ -3017,6 +3240,12 @@ function drawHorse() {
   const strideAmount = running ? (bullMode ? 15 : 10) : 3;
   const bodyFill = bullMode ? "#63342d" : (invisibleFlash ? "#c8dced" : "#9b6338");
   const bodyStroke = bullMode ? "#2e1711" : (invisibleFlash ? "#8ba1b3" : "#704522");
+  const mirrorHorse = isBossFightActive() && horse.facing === -1;
+  if (mirrorHorse) {
+    ctx.save();
+    ctx.translate(2 * (x + 90), 0);
+    ctx.scale(-1, 1);
+  }
   ctx.fillStyle = bodyFill;
   ctx.strokeStyle = bodyStroke;
   ctx.lineWidth = 3;
@@ -3136,6 +3365,7 @@ function drawHorse() {
     ctx.beginPath();
     ctx.ellipse(x + 2, groundY - 120, 7, 5, 0.1, 0, Math.PI * 2);
     ctx.fill();
+    if (mirrorHorse) ctx.restore();
     return;
   }
 
@@ -3238,6 +3468,7 @@ function drawHorse() {
     ctx.ellipse(x + 162, groundY - 111, 3, 2, 0, 0, Math.PI * 2);
     ctx.fill();
   }
+  if (mirrorHorse) ctx.restore();
 }
 
 function drawRivets(points, color = "rgba(47, 36, 27, 0.55)") {

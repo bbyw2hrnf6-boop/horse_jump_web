@@ -219,6 +219,7 @@ const finalScoreValue = document.getElementById("finalScoreValue");
 const overlayRestartButton = document.getElementById("overlayRestartButton");
 const statusText = document.getElementById("statusText");
 const pauseButton = document.getElementById("pauseButton");
+const fullscreenButton = document.getElementById("fullscreenButton");
 const introOverlay = document.getElementById("introOverlay");
 const pauseOverlay = document.getElementById("pauseOverlay");
 const startGameButton = document.getElementById("startGameButton");
@@ -262,6 +263,18 @@ const PERK_LABELS = { fly: "Fly", magnet: "Magnet", blaster: "Carrot Blaster" };
 const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
 const GAME_UPDATES = [
+  {
+    dateTime: "2026-05-21T16:36:00+02:00",
+    displayTime: "May 21, 2026 at 16:36",
+    title: "Fullscreen And Bigger Bosses",
+    description: "Desktop now has a tiny fullscreen button, Hardcore adds Alien and Bigfoot bosses, bosses have more HP, and boss attacks now aim at the horse.",
+  },
+  {
+    dateTime: "2026-05-21T13:58:00+02:00",
+    displayTime: "May 21, 2026 at 13:58",
+    title: "Smoother Hardcore Balance",
+    description: "Hardcore now keeps normal ground-obstacle pacing, birds use safer lanes, boss touch movement is smoother, and key obstacles have extra 3D polish.",
+  },
   {
     dateTime: "2026-05-21T00:08:00+02:00",
     displayTime: "May 21, 2026 at 00:08",
@@ -433,7 +446,7 @@ const BOSS_TYPES = [
   {
     type: "dinosaur",
     label: "Dinosaur",
-    hp: 96,
+    hp: 150,
     width: 188,
     height: 116,
     y: 122,
@@ -442,7 +455,7 @@ const BOSS_TYPES = [
   {
     type: "crab",
     label: "Crab",
-    hp: 118,
+    hp: 170,
     width: 178,
     height: 102,
     y: 152,
@@ -451,11 +464,29 @@ const BOSS_TYPES = [
   {
     type: "biber",
     label: "Biber",
-    hp: 140,
+    hp: 195,
     width: 184,
     height: 108,
     y: 138,
     palette: ["#8c5a34", "#4f2f1a", "#25150c"],
+  },
+  {
+    type: "alien",
+    label: "Alien",
+    hp: 205,
+    width: 176,
+    height: 116,
+    y: 110,
+    palette: ["#8b5cf6", "#4c1d95", "#1e103d"],
+  },
+  {
+    type: "bigfoot",
+    label: "Bigfoot",
+    hp: 230,
+    width: 196,
+    height: 128,
+    y: 128,
+    palette: ["#8b5a35", "#4a2a18", "#24130b"],
   },
 ];
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -556,6 +587,7 @@ const state = {
   input: {
     left: false,
     right: false,
+    touchTargetX: null,
   },
 };
 
@@ -628,6 +660,42 @@ function refocusGameplayAfterViewportChange() {
   focusGameplayArea(true);
   window.setTimeout(() => focusGameplayArea(true), 120);
   window.setTimeout(() => focusGameplayArea(true), 360);
+}
+
+function isFullscreenActive() {
+  return document.fullscreenElement === gamePanel ||
+    document.fullscreenElement === gameStage ||
+    document.fullscreenElement === playfield;
+}
+
+function syncFullscreenButton() {
+  if (!fullscreenButton) {
+    return;
+  }
+  const isActive = isFullscreenActive();
+  fullscreenButton.textContent = isActive ? "Exit" : "Full";
+  fullscreenButton.title = isActive ? "Exit full screen" : "Full screen";
+  fullscreenButton.setAttribute("aria-label", isActive ? "Exit full screen" : "Enter full screen");
+  fullscreenButton.hidden = !document.fullscreenEnabled;
+}
+
+async function toggleFullscreenMode() {
+  if (!document.fullscreenEnabled) {
+    state.status = "Fullscreen is not available in this browser.";
+    return;
+  }
+  try {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else {
+      await (playfield || gameStage || gamePanel || document.documentElement).requestFullscreen();
+    }
+    focusGameplayArea(true);
+  } catch (_error) {
+    state.status = "Fullscreen could not be opened.";
+  } finally {
+    syncFullscreenButton();
+  }
 }
 
 function loadSettings() {
@@ -855,6 +923,16 @@ function playSpawnSound() {
 }
 
 function playBossAttackSound(type) {
+  if (type === "plasma" || type === "laser") {
+    playTone({ frequency: 880, duration: 0.1, type: "sine", volume: 0.034, slideTo: 1320 });
+    playTone({ frequency: 1760, duration: 0.06, type: "triangle", volume: 0.02, when: 0.04, slideTo: 1046.5 });
+    return;
+  }
+  if (type === "boulder" || type === "shockwave") {
+    playTone({ frequency: 82.41, duration: 0.14, type: "sawtooth", volume: 0.04, slideTo: 55 });
+    playTone({ frequency: 146.83, duration: 0.08, type: "square", volume: 0.024, when: 0.06 });
+    return;
+  }
   if (type === "bubble" || type === "claw") {
     playTone({ frequency: 680, duration: 0.08, type: "triangle", volume: 0.035, slideTo: 940 });
     playTone({ frequency: 340, duration: 0.08, type: "square", volume: 0.022, when: 0.04, slideTo: 260 });
@@ -912,6 +990,22 @@ function getAreaMusicPattern(area) {
       leadType: "square",
       bassType: "triangle",
       step: 0.2,
+    },
+    "boss-alien": {
+      lead: [739.99, 880, 987.77, 1174.66, 1046.5, 932.33, 783.99, 987.77, 659.25, 880],
+      bass: [61.74, 92.5, 73.42, 110, 61.74],
+      stab: [1480, 1318.51, 1174.66, 987.77],
+      leadType: "sine",
+      bassType: "sawtooth",
+      step: 0.15,
+    },
+    "boss-bigfoot": {
+      lead: [146.83, 196, 220, 246.94, 196, 174.61, 146.83, 110, 164.81, 220],
+      bass: [41.2, 55, 61.74, 55, 41.2, 73.42],
+      stab: [293.66, 246.94, 220, 196],
+      leadType: "square",
+      bassType: "sawtooth",
+      step: 0.21,
     },
   };
   if (bossPatterns[area]) {
@@ -1085,6 +1179,7 @@ function resetGame() {
   });
   state.input.left = false;
   state.input.right = false;
+  state.input.touchTargetX = null;
   playerNameInput.value = "";
   if (state.hasStarted) {
     if (audioState.unlocked) {
@@ -1432,22 +1527,19 @@ function clearBossFightPickups() {
 function hasUpcomingGroundThreat() {
   return state.obstacles.some((obstacle) => (
     obstacle.x > state.horse.x + 90 &&
-    obstacle.x < WIDTH + 330
+    obstacle.x < WIDTH + 390
   ));
 }
 
 function hasUpcomingFlyingThreat() {
   return state.flyingEnemies.some((enemy) => (
     enemy.x > state.horse.x + 110 &&
-    enemy.x < WIDTH + 220
+    enemy.x < WIDTH + 280
   ));
 }
 
 function spawnObstacle() {
   if (isBossFightActive()) {
-    return false;
-  }
-  if (appSettings.hardcore && hasUpcomingFlyingThreat()) {
     return false;
   }
   const difficulty = Math.min(8, Math.floor(state.score / 1200));
@@ -1458,7 +1550,8 @@ function spawnObstacle() {
   const type = spawnCow
     ? "cow"
     : availableTypes[Math.floor(Math.random() * availableTypes.length)];
-  state.obstacles.push(buildObstacle(type, WIDTH + 120 + Math.random() * 80));
+  const safeSpawnOffset = appSettings.hardcore && hasUpcomingFlyingThreat() ? 250 : 120;
+  state.obstacles.push(buildObstacle(type, WIDTH + safeSpawnOffset + Math.random() * 80));
   if (appSettings.hardcore) {
     state.flyingTimer = Math.max(state.flyingTimer, 120);
   }
@@ -1469,18 +1562,24 @@ function spawnObstacle() {
 }
 
 function spawnFlyingEnemy() {
-  if (isBossFightActive() || hasUpcomingGroundThreat()) {
+  if (isBossFightActive() || hasUpcomingGroundThreat() || hasUpcomingFlyingThreat()) {
     return false;
   }
+  const laneOptions = [
+    GROUND_Y - 245,
+    GROUND_Y - 285,
+    GROUND_Y - 320,
+  ];
+  const lane = laneOptions[Math.floor(Math.random() * laneOptions.length)];
   state.flyingEnemies.push({
     x: WIDTH + 90,
-    y: 104 + Math.random() * Math.max(70, GROUND_Y - 300),
+    y: Math.max(88, lane + (Math.random() - 0.5) * 18),
     width: 62,
     height: 38,
     phase: Math.random() * Math.PI * 2,
     passed: false,
   });
-  state.spawnTimer = Math.max(state.spawnTimer, 115);
+  state.spawnTimer = Math.max(state.spawnTimer, 64);
   return true;
 }
 
@@ -1531,13 +1630,28 @@ function spawnBossAttack() {
   const boss = state.boss;
   const originX = boss.x + boss.width * 0.18;
   const originY = boss.y + boss.height * 0.55 + Math.sin(boss.phase) * 12;
-  const targetY = state.horse.y - 58 + (Math.random() - 0.5) * 60;
+  const targetX = state.horse.x + state.horse.width * 0.58;
+  const targetY = Math.max(64, Math.min(
+    GROUND_Y - 32,
+    state.horse.y - state.horse.height * 0.52 + (Math.random() - 0.5) * 48,
+  ));
+  const aimSpeed = 7.4 + Math.min(2.8, state.bossFightCount * 0.32);
+  const aimedVelocity = (speed, maxVy = 5.4) => {
+    const dx = targetX - originX;
+    const dy = targetY - originY;
+    const distance = Math.max(1, Math.hypot(dx, dy));
+    return {
+      vx: (dx / distance) * speed,
+      vy: Math.max(-maxVy, Math.min(maxVy, (dy / distance) * speed)),
+    };
+  };
+  const baseVelocity = aimedVelocity(aimSpeed);
   const attackRoll = Math.random();
   const baseAttack = {
     x: originX,
     y: originY,
-    vx: -7.2 - Math.min(2.4, state.bossFightCount * 0.35),
-    vy: Math.max(-2.2, Math.min(2.2, (targetY - originY) / 55)),
+    vx: baseVelocity.vx,
+    vy: baseVelocity.vy,
     phase: Math.random() * Math.PI * 2,
     type: "fireball",
     size: 18,
@@ -1548,7 +1662,7 @@ function spawnBossAttack() {
   if (boss.type === "dinosaur" && attackRoll < 0.36) {
     Object.assign(baseAttack, {
       type: "meteor",
-      x: boss.x + boss.width * 0.05,
+      x: Math.min(WIDTH - 80, targetX + 170 + Math.random() * 130),
       y: Math.max(56, state.horse.y - 280),
       vx: -5.2 - Math.min(1.6, state.bossFightCount * 0.22),
       vy: 2.5 + Math.random() * 0.9,
@@ -1557,15 +1671,17 @@ function spawnBossAttack() {
       height: 42,
     });
   } else if (boss.type === "crab") {
+    const velocity = aimedVelocity(attackRoll < 0.42 ? aimSpeed + 1.2 : aimSpeed - 0.4, 4.3);
     Object.assign(baseAttack, {
       type: attackRoll < 0.42 ? "claw" : "bubble",
       size: attackRoll < 0.42 ? 19 : 16,
       width: attackRoll < 0.42 ? 48 : 32,
       height: attackRoll < 0.42 ? 30 : 32,
-      vx: attackRoll < 0.42 ? -8.6 : baseAttack.vx,
-      vy: Math.max(-1.8, Math.min(1.8, (targetY - originY) / 65)),
+      vx: velocity.vx,
+      vy: velocity.vy,
     });
   } else if (boss.type === "biber") {
+    const branchVelocity = aimedVelocity(aimSpeed - 0.8, 4.6);
     Object.assign(baseAttack, {
       type: attackRoll < 0.5 ? "log" : "branch",
       y: attackRoll < 0.5 ? GROUND_Y - 28 : boss.y + 28,
@@ -1573,7 +1689,30 @@ function spawnBossAttack() {
       width: attackRoll < 0.5 ? 54 : 46,
       height: attackRoll < 0.5 ? 24 : 18,
       vx: attackRoll < 0.5 ? -8.2 : -6.2,
-      vy: attackRoll < 0.5 ? 0 : 2.1,
+      vy: attackRoll < 0.5 ? 0 : branchVelocity.vy,
+    });
+  } else if (boss.type === "alien") {
+    const laserVelocity = aimedVelocity(aimSpeed + 2.4, 4.1);
+    const plasmaVelocity = aimedVelocity(aimSpeed + 0.6, 5.8);
+    Object.assign(baseAttack, {
+      type: attackRoll < 0.48 ? "laser" : "plasma",
+      size: attackRoll < 0.48 ? 15 : 21,
+      width: attackRoll < 0.48 ? 64 : 42,
+      height: attackRoll < 0.48 ? 18 : 42,
+      vx: attackRoll < 0.48 ? laserVelocity.vx : plasmaVelocity.vx,
+      vy: attackRoll < 0.48 ? laserVelocity.vy : plasmaVelocity.vy,
+      homing: attackRoll < 0.48 ? 0 : 0.04,
+    });
+  } else if (boss.type === "bigfoot") {
+    const boulderVelocity = aimedVelocity(aimSpeed - 0.2, 4.8);
+    Object.assign(baseAttack, {
+      type: attackRoll < 0.45 ? "shockwave" : "boulder",
+      y: attackRoll < 0.45 ? GROUND_Y - 34 : boss.y + boss.height * 0.58,
+      size: attackRoll < 0.45 ? 22 : 23,
+      width: attackRoll < 0.45 ? 68 : 46,
+      height: attackRoll < 0.45 ? 28 : 46,
+      vx: attackRoll < 0.45 ? -9.1 : boulderVelocity.vx,
+      vy: attackRoll < 0.45 ? 0 : boulderVelocity.vy,
     });
   }
 
@@ -1748,9 +1887,17 @@ function activateBullPower() {
 function updateHorse() {
   const horse = state.horse;
   if (isBossFightActive()) {
-    const horizontalSpeed = 8.5;
+    const horizontalSpeed = state.input.touchTargetX === null ? 8.5 : 6.8;
     if (state.input.left) horse.x -= horizontalSpeed;
     if (state.input.right) horse.x += horizontalSpeed;
+    if (state.input.touchTargetX !== null) {
+      const targetX = Math.max(BOSS_ARENA_MIN_X, Math.min(BOSS_ARENA_MAX_X, state.input.touchTargetX));
+      const delta = targetX - horse.x;
+      horse.x += Math.max(-9.5, Math.min(9.5, delta * 0.18));
+      if (Math.abs(delta) < 4) {
+        horse.x = targetX;
+      }
+    }
     horse.x = Math.max(BOSS_ARENA_MIN_X, Math.min(BOSS_ARENA_MAX_X, horse.x));
   } else if (Math.abs(horse.x - DEFAULT_HORSE_X) > 0.5) {
     horse.x += (DEFAULT_HORSE_X - horse.x) * 0.12;
@@ -1803,7 +1950,7 @@ function updateWorld() {
     if (state.spawnTimer <= 0) {
       const spawned = spawnObstacle();
       state.spawnTimer = spawned
-        ? (appSettings.hardcore ? 70 + Math.random() * 62 : 55 + Math.random() * 45)
+        ? 55 + Math.random() * 45
         : 42;
     }
   }
@@ -1908,22 +2055,24 @@ function updateWorld() {
     state.boss.moveTimer -= 1;
     if (state.boss.moveTimer <= 0) {
       const dangerPush = state.horse.x > 300 ? 80 : 0;
-      state.boss.targetX = WIDTH - 340 - Math.random() * 190 - dangerPush;
-      state.boss.targetY = state.boss.baseY + (Math.random() - 0.5) * (state.boss.type === "crab" ? 76 : 118);
+      const moveRange = state.boss.type === "alien" ? 160 : (state.boss.type === "crab" || state.boss.type === "bigfoot" ? 76 : 118);
+      state.boss.targetX = WIDTH - 330 - Math.random() * 205 - dangerPush;
+      state.boss.targetY = state.boss.baseY + (Math.random() - 0.5) * moveRange;
       state.boss.moveTimer = 70 + Math.random() * 85;
     }
     const minBossX = WIDTH - 560;
     const maxBossX = WIDTH - state.boss.width - 40;
     const minBossY = 82;
     const maxBossY = Math.max(minBossY + 20, GROUND_Y - state.boss.height - 26);
-    const bob = Math.sin(state.boss.phase) * (state.boss.type === "crab" ? 8 : 14);
+    const bob = Math.sin(state.boss.phase) * (state.boss.type === "alien" ? 22 : (state.boss.type === "crab" || state.boss.type === "bigfoot" ? 8 : 14));
     state.boss.x += (Math.max(minBossX, Math.min(maxBossX, state.boss.targetX)) - state.boss.x) * 0.045;
     state.boss.y += (Math.max(minBossY, Math.min(maxBossY, state.boss.targetY + bob)) - state.boss.y) * 0.06;
     state.bossAttackTimer -= 1;
     if (state.bossAttackTimer <= 0) {
       spawnBossAttack();
       const pressure = Math.min(20, state.bossFightCount * 3);
-      const bossPace = state.boss.type === "crab" ? 72 : (state.boss.type === "biber" ? 88 : 82);
+      const bossPaces = { crab: 72, biber: 88, alien: 64, bigfoot: 92, dinosaur: 82 };
+      const bossPace = bossPaces[state.boss.type] || 82;
       state.bossAttackTimer = Math.max(46, bossPace - pressure + Math.random() * 38);
     }
     state.bossPickupTimer -= 1;
@@ -1935,6 +2084,16 @@ function updateWorld() {
 
   for (const attack of state.bossAttacks) {
     attack.phase += 0.18;
+    if (attack.homing) {
+      const targetX = state.horse.x + state.horse.width * 0.55;
+      const targetY = state.horse.y - state.horse.height * 0.5;
+      const dx = targetX - (attack.x + attack.width / 2);
+      const dy = targetY - (attack.y + attack.height / 2);
+      const distance = Math.max(1, Math.hypot(dx, dy));
+      const speed = Math.max(6.8, Math.hypot(attack.vx, attack.vy));
+      attack.vx += ((dx / distance) * speed - attack.vx) * attack.homing;
+      attack.vy += ((dy / distance) * speed - attack.vy) * attack.homing;
+    }
     attack.x += attack.vx;
     attack.y += attack.vy;
     if (attack.type === "bubble") {
@@ -1947,6 +2106,13 @@ function updateWorld() {
     } else if (attack.type === "branch") {
       attack.vy = Math.min(4.2, attack.vy + 0.04);
       attack.y += Math.sin(attack.phase) * 0.8;
+    } else if (attack.type === "plasma") {
+      attack.y += Math.sin(attack.phase * 1.7) * 1.1;
+    } else if (attack.type === "boulder") {
+      attack.vy = Math.min(5.8, attack.vy + 0.11);
+      attack.x += Math.sin(attack.phase) * 0.6;
+    } else if (attack.type === "shockwave") {
+      attack.y = GROUND_Y - attack.height - 6;
     }
   }
   state.bossAttacks = state.bossAttacks.filter((attack) => (
@@ -2404,6 +2570,129 @@ function drawBoss(boss) {
     ctx.moveTo(96, 96);
     ctx.lineTo(110, boss.height + 4);
     ctx.stroke();
+  } else if (boss.type === "alien") {
+    const float = Math.sin(boss.phase * 1.5) * 4;
+    ctx.save();
+    ctx.translate(0, float);
+    const glow = ctx.createRadialGradient(boss.width * 0.5, 76, 8, boss.width * 0.5, 76, 88);
+    glow.addColorStop(0, "rgba(125, 249, 255, 0.5)");
+    glow.addColorStop(1, "rgba(139, 92, 246, 0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.ellipse(boss.width * 0.5, 80, 86, 46, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const hull = ctx.createLinearGradient(30, 54, boss.width - 24, 98);
+    hull.addColorStop(0, "#d8fbff");
+    hull.addColorStop(0.48, "#8b5cf6");
+    hull.addColorStop(1, "#3b0764");
+    ctx.fillStyle = hull;
+    ctx.strokeStyle = boss.palette[2];
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(boss.width * 0.5, 78, 70, 24, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.72)";
+    ctx.beginPath();
+    ctx.ellipse(boss.width * 0.36, 67, 24, 7, -0.14, 0, Math.PI * 2);
+    ctx.fill();
+    for (let lamp = 0; lamp < 5; lamp += 1) {
+      const lx = boss.width * 0.24 + lamp * 24;
+      ctx.fillStyle = lamp % 2 ? "#22d3ee" : "#f0abfc";
+      ctx.beginPath();
+      ctx.arc(lx, 84 + Math.sin(boss.phase * 2 + lamp) * 2, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const head = ctx.createRadialGradient(64, 38, 10, 64, 44, 46);
+    head.addColorStop(0, "#d9f99d");
+    head.addColorStop(0.58, "#76d86d");
+    head.addColorStop(1, "#287342");
+    ctx.fillStyle = head;
+    ctx.strokeStyle = "#173d1f";
+    ctx.beginPath();
+    ctx.ellipse(68, 42, 40, 32, -0.08, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#101024";
+    ctx.beginPath();
+    ctx.ellipse(54, 39, 8, 16, -0.28, 0, Math.PI * 2);
+    ctx.ellipse(78, 39, 8, 16, 0.28, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#173d1f";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(46, 16);
+    ctx.lineTo(36, 2);
+    ctx.moveTo(86, 16);
+    ctx.lineTo(96, 2);
+    ctx.stroke();
+    ctx.fillStyle = "#a7f3d0";
+    ctx.beginPath();
+    ctx.arc(36, 2, 5, 0, Math.PI * 2);
+    ctx.arc(96, 2, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  } else if (boss.type === "bigfoot") {
+    const stomp = Math.sin(boss.phase * 2) * 4;
+    const fur = ctx.createLinearGradient(24, 22, boss.width - 20, boss.height);
+    fur.addColorStop(0, "#c47a43");
+    fur.addColorStop(0.52, "#7a4123");
+    fur.addColorStop(1, "#2f1a10");
+    ctx.fillStyle = fur;
+    ctx.strokeStyle = boss.palette[2];
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.roundRect(46, 30, boss.width - 76, boss.height - 34, 30);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255, 224, 188, 0.28)";
+    ctx.beginPath();
+    ctx.ellipse(82, 54, 30, 18, -0.25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#9a5b31";
+    for (let tuft = 0; tuft < 8; tuft += 1) {
+      ctx.beginPath();
+      ctx.moveTo(52 + tuft * 13, 32);
+      ctx.lineTo(60 + tuft * 13, 16 + (tuft % 2) * 8);
+      ctx.lineTo(70 + tuft * 13, 34);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = "#d49a6a";
+    ctx.beginPath();
+    ctx.roundRect(64, 44, 54, 45, 18);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#1a100b";
+    ctx.beginPath();
+    ctx.arc(78, 61, 4, 0, Math.PI * 2);
+    ctx.arc(103, 61, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#2f1a10";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(82, 78);
+    ctx.quadraticCurveTo(91, 86, 104, 78);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#3a2012";
+    ctx.lineWidth = 13;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(52, 64);
+    ctx.quadraticCurveTo(18, 80 + stomp, 34, 112);
+    ctx.moveTo(boss.width - 44, 66);
+    ctx.quadraticCurveTo(boss.width - 6, 84 - stomp, boss.width - 28, 112);
+    ctx.stroke();
+    ctx.fillStyle = "#5b321d";
+    ctx.beginPath();
+    ctx.ellipse(54, boss.height + 2 + Math.max(0, stomp), 34, 11, 0, 0, Math.PI * 2);
+    ctx.ellipse(132, boss.height + 2 - Math.min(0, stomp), 38, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
   } else {
     ctx.fillStyle = boss.palette?.[0] || "#6fb34a";
     ctx.beginPath();
@@ -2471,7 +2760,9 @@ function drawBoss(boss) {
 function drawBossAttack(attack) {
   ctx.save();
   ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);
-  ctx.rotate(attack.type === "log" || attack.type === "branch" ? attack.phase * 1.2 : 0);
+  const aimedAngle = attack.type === "laser" ? Math.atan2(attack.vy, attack.vx) : 0;
+  const spinAngle = attack.type === "log" || attack.type === "branch" || attack.type === "boulder" ? attack.phase * 1.2 : 0;
+  ctx.rotate(aimedAngle || spinAngle);
   if (attack.type === "bubble") {
     ctx.fillStyle = "rgba(123, 205, 255, 0.5)";
     ctx.strokeStyle = "rgba(22, 88, 137, 0.75)";
@@ -2553,6 +2844,86 @@ function drawBossAttack(attack) {
     ctx.beginPath();
     ctx.arc(-4, -5, attack.size * 0.42, 0, Math.PI * 2);
     ctx.fill();
+  } else if (attack.type === "plasma") {
+    const plasmaGlow = ctx.createRadialGradient(0, 0, 4, 0, 0, attack.size * 1.7);
+    plasmaGlow.addColorStop(0, "rgba(255,255,255,0.96)");
+    plasmaGlow.addColorStop(0.42, "rgba(34,211,238,0.78)");
+    plasmaGlow.addColorStop(1, "rgba(139,92,246,0)");
+    ctx.fillStyle = plasmaGlow;
+    ctx.beginPath();
+    ctx.arc(0, 0, attack.size * 1.65, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#4c1d95";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, attack.size, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(240,171,252,0.82)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, attack.size * 1.15, attack.size * 0.44, attack.phase, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (attack.type === "laser") {
+    ctx.fillStyle = "rgba(103,232,249,0.26)";
+    ctx.beginPath();
+    ctx.roundRect(-attack.width / 2 - 14, -attack.height / 2 - 4, attack.width + 24, attack.height + 8, 12);
+    ctx.fill();
+    const beam = ctx.createLinearGradient(-attack.width / 2, 0, attack.width / 2, 0);
+    beam.addColorStop(0, "#a78bfa");
+    beam.addColorStop(0.5, "#ffffff");
+    beam.addColorStop(1, "#22d3ee");
+    ctx.fillStyle = beam;
+    ctx.strokeStyle = "#4c1d95";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-attack.width / 2, -7);
+    ctx.lineTo(attack.width / 2, -3);
+    ctx.lineTo(attack.width / 2 + 12, 0);
+    ctx.lineTo(attack.width / 2, 3);
+    ctx.lineTo(-attack.width / 2, 7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else if (attack.type === "boulder") {
+    const rock = ctx.createRadialGradient(-8, -9, 4, 0, 0, attack.size * 1.3);
+    rock.addColorStop(0, "#f0d0a8");
+    rock.addColorStop(0.44, "#8a6a4a");
+    rock.addColorStop(1, "#3e2a1b");
+    ctx.fillStyle = rock;
+    ctx.strokeStyle = "#2f1a10";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-22, -6);
+    ctx.lineTo(-10, -22);
+    ctx.lineTo(13, -19);
+    ctx.lineTo(24, -3);
+    ctx.lineTo(16, 20);
+    ctx.lineTo(-8, 23);
+    ctx.lineTo(-24, 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.28)";
+    ctx.beginPath();
+    ctx.ellipse(-8, -10, 8, 4, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (attack.type === "shockwave") {
+    ctx.fillStyle = "rgba(120, 72, 37, 0.28)";
+    ctx.beginPath();
+    ctx.ellipse(0, 12, attack.width * 0.72, 13, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#a16207";
+    ctx.strokeStyle = "#422006";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-attack.width / 2, 8);
+    ctx.quadraticCurveTo(-16, -20, 4, 4);
+    ctx.quadraticCurveTo(22, 24, attack.width / 2, 0);
+    ctx.lineTo(attack.width / 2, 17);
+    ctx.lineTo(-attack.width / 2, 17);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
   } else {
     ctx.fillStyle = "#ff7043";
     ctx.strokeStyle = "#8f2619";
@@ -2929,6 +3300,38 @@ function draw3DBox(x, y, width, height, colors) {
   ctx.lineTo(x + width + depth, y + height - depth);
   ctx.lineTo(x + width, y + height);
   ctx.stroke();
+
+  const shine = ctx.createLinearGradient(x, y, x + width * 0.6, y + height * 0.6);
+  shine.addColorStop(0, "rgba(255,255,255,0.34)");
+  shine.addColorStop(0.42, "rgba(255,255,255,0.08)");
+  shine.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = shine;
+  ctx.beginPath();
+  ctx.moveTo(x + 5, y + 5);
+  ctx.lineTo(x + width * 0.62, y + 5);
+  ctx.lineTo(x + width * 0.38, y + height * 0.42);
+  ctx.lineTo(x + 5, y + height * 0.3);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function draw3DGloss(x, y, width, height, radius = 12) {
+  const gloss = ctx.createLinearGradient(x, y, x + width, y + height);
+  gloss.addColorStop(0, "rgba(255,255,255,0.32)");
+  gloss.addColorStop(0.22, "rgba(255,255,255,0.12)");
+  gloss.addColorStop(0.7, "rgba(255,255,255,0)");
+  ctx.fillStyle = gloss;
+  ctx.beginPath();
+  ctx.roundRect(x, y, width, height * 0.55, radius);
+  ctx.fill();
+}
+
+function drawInsetShadow(x, y, width, height, radius = 12) {
+  ctx.strokeStyle = "rgba(0,0,0,0.2)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(x + 2, y + 2, width - 4, height - 4, radius);
+  ctx.stroke();
 }
 
 function drawObstacle(obstacle) {
@@ -2978,6 +3381,7 @@ function drawObstacle(obstacle) {
     ctx.ellipse(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2, obstacle.width / 2, obstacle.height / 2, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    draw3DGloss(obstacle.x + 6, obstacle.y + 6, obstacle.width - 12, obstacle.height - 12, 18);
     ctx.strokeStyle = "#c7a16a";
     ctx.beginPath();
     ctx.moveTo(obstacle.x + 6, obstacle.y + 12);
@@ -3139,6 +3543,8 @@ function drawObstacle(obstacle) {
     ctx.roundRect(obstacle.x + 12, obstacle.y + 28, obstacle.width - 24, obstacle.height - 28, 12);
     ctx.fill();
     ctx.stroke();
+    draw3DGloss(obstacle.x + 16, obstacle.y + 30, obstacle.width - 32, obstacle.height - 36, 10);
+    drawInsetShadow(obstacle.x + 12, obstacle.y + 28, obstacle.width - 24, obstacle.height - 28, 12);
     ctx.fillStyle = "#8fd0eb";
     ctx.beginPath();
     ctx.roundRect(obstacle.x + 24, obstacle.y + 10, obstacle.width * 0.4, 28, 8);
@@ -3180,6 +3586,7 @@ function drawObstacle(obstacle) {
     ctx.fillStyle = "#8e6035";
     ctx.fillRect(obstacle.x + 6, obstacle.y + 20, obstacle.width - 12, 10);
     ctx.fillRect(obstacle.x + 22, obstacle.y + 8, obstacle.width - 36, 18);
+    draw3DGloss(obstacle.x + 22, obstacle.y + 8, obstacle.width - 36, 20, 5);
     ctx.strokeStyle = "#5b3c20";
     ctx.lineWidth = 3;
     ctx.strokeRect(obstacle.x + 14, obstacle.y + 16, obstacle.width - 28, 24);
@@ -3251,6 +3658,7 @@ function drawObstacle(obstacle) {
     ctx.ellipse(obstacle.x + 28, obstacle.y + 34, 20, 17, 0, 0, Math.PI * 2);
     ctx.ellipse(obstacle.x + 52, obstacle.y + 22, 18, 15, 0, 0, Math.PI * 2);
     ctx.fill();
+    draw3DGloss(obstacle.x + 18, obstacle.y + 12, obstacle.width - 28, 34, 12);
     ctx.fillStyle = "#5b4330";
     ctx.beginPath();
     ctx.ellipse(obstacle.x + obstacle.width - 18, obstacle.y + 34, 16, 14, 0, 0, Math.PI * 2);
@@ -3373,6 +3781,7 @@ function drawObstacle(obstacle) {
     ctx.roundRect(obstacle.x + 10, obstacle.y + 14, obstacle.width - 26, 36, 16);
     ctx.fill();
     ctx.stroke();
+    draw3DGloss(obstacle.x + 15, obstacle.y + 16, obstacle.width - 38, 24, 12);
     ctx.fillStyle = "#5a3d29";
     ctx.beginPath();
     ctx.ellipse(obstacle.x + 30, obstacle.y + 28, 11, 8, -0.2, 0, Math.PI * 2);
@@ -4808,9 +5217,11 @@ function updateTouchBossMovement(event) {
   }
   const rect = canvas.getBoundingClientRect();
   const touchX = event.touches[0].clientX - rect.left;
-  const ratio = touchX / Math.max(1, rect.width);
-  state.input.left = ratio < 0.42;
-  state.input.right = ratio > 0.58;
+  const ratio = Math.max(0, Math.min(1, touchX / Math.max(1, rect.width)));
+  const arenaPadding = BOSS_ARENA_MAX_X - BOSS_ARENA_MIN_X;
+  state.input.touchTargetX = BOSS_ARENA_MIN_X + arenaPadding * ratio;
+  state.input.left = false;
+  state.input.right = false;
 }
 
 canvas.addEventListener("pointerdown", (event) => {
@@ -4832,13 +5243,14 @@ canvas.addEventListener("pointerdown", (event) => {
 canvas.addEventListener("touchstart", (event) => {
   event.preventDefault();
   unlockAudio();
-  updateTouchBossMovement(event);
   if (!state.hasStarted) {
     startRun();
   } else if (state.paused) {
     return;
   } else if (state.gameOver && !state.awaitingScoreEntry) {
     resetGame();
+  } else if (isBossFightActive() && !state.awaitingScoreEntry) {
+    updateTouchBossMovement(event);
   } else if (!state.awaitingScoreEntry) {
     jump();
   }
@@ -4855,6 +5267,13 @@ canvas.addEventListener("touchmove", (event) => {
 canvas.addEventListener("touchend", () => {
   state.input.left = false;
   state.input.right = false;
+  state.input.touchTargetX = null;
+});
+
+canvas.addEventListener("touchcancel", () => {
+  state.input.left = false;
+  state.input.right = false;
+  state.input.touchTargetX = null;
 });
 
 canvas.addEventListener("dblclick", (event) => {
@@ -4872,6 +5291,13 @@ if (pauseButton) {
   pauseButton.addEventListener("click", () => {
     unlockAudio();
     togglePause();
+  });
+}
+
+if (fullscreenButton) {
+  fullscreenButton.addEventListener("click", () => {
+    unlockAudio();
+    toggleFullscreenMode();
   });
 }
 
@@ -4974,6 +5400,12 @@ window.addEventListener("load", () => {
 
 window.addEventListener("resize", () => {
   refocusGameplayAfterViewportChange();
+  syncFullscreenButton();
+});
+
+document.addEventListener("fullscreenchange", () => {
+  syncFullscreenButton();
+  refocusGameplayAfterViewportChange();
 });
 
 if (typeof mobileLandscapeQuery.addEventListener === "function") {
@@ -4991,5 +5423,6 @@ applySettings();
 renderGameUpdates();
 renderLeaderboard();
 syncHud();
+syncFullscreenButton();
 refocusGameplayAfterViewportChange();
 tick();

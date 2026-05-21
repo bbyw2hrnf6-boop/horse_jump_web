@@ -227,26 +227,53 @@ h2, p {
   display: flex;
   flex: 0 0 auto;
   align-self: center;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 9px;
+  max-width: 186px;
 }
 
 .boss-token {
   display: grid;
-  width: 64px;
-  height: 64px;
+  width: 52px;
+  height: 52px;
   place-items: center;
   border: 2px solid rgba(255, 179, 26, 0.5);
-  border-radius: 20px;
+  border-radius: 16px;
   background:
     radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.88), transparent 30%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 201, 109, 0.8));
   box-shadow: 0 12px 18px rgba(0, 0, 0, 0.38);
-  font-size: 2.15rem;
+  font-size: 1.72rem;
   animation: bossFloat 3.4s ease-in-out infinite;
 }
 
 .boss-token:nth-child(2) {
   animation-delay: 0.35s;
+}
+
+.boss-token:nth-child(3) {
+  animation-delay: 0.7s;
+}
+
+.boss-token:nth-child(4) {
+  animation-delay: 1.05s;
+}
+
+.boss-token:nth-child(5) {
+  animation-delay: 1.4s;
+}
+
+.boss-alien {
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.92), transparent 30%),
+    linear-gradient(145deg, rgba(207, 250, 254, 0.9), rgba(139, 92, 246, 0.86));
+}
+
+.boss-bigfoot {
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 237, 213, 0.92), transparent 30%),
+    linear-gradient(145deg, rgba(194, 120, 69, 0.95), rgba(83, 46, 27, 0.88));
 }
 
 .boss-token:nth-child(3) {
@@ -475,7 +502,8 @@ body.dark-mode .settings-gear {
   transform: translateY(-1px);
 }
 
-.playfield-controls .settings-gear {
+.playfield-controls .settings-gear,
+.playfield-controls .fullscreen-button {
   width: 28px;
   height: 28px;
   padding: 0;
@@ -483,9 +511,20 @@ body.dark-mode .settings-gear {
   font-size: 0.78rem;
 }
 
+.playfield-controls .fullscreen-button {
+  font-size: 0.56rem;
+  font-weight: 900;
+}
+
 .playfield-controls .pause-button {
   flex: 0 0 auto;
   border-radius: 999px;
+}
+
+@media (pointer: coarse), (max-width: 980px) and (orientation: landscape) {
+  .playfield-controls .fullscreen-button {
+    display: none;
+  }
 }
 
 body.hardcore-active .playfield {
@@ -511,6 +550,20 @@ body.hardcore-active .hud-card strong {
   position: relative;
   overflow: hidden;
   border-radius: 14px;
+}
+
+.playfield:fullscreen {
+  display: grid;
+  width: 100vw;
+  height: 100vh;
+  place-items: center;
+  border-radius: 0;
+  background: #120d0a;
+}
+
+.playfield:fullscreen canvas {
+  width: min(100vw, 150vh);
+  max-height: 100vh;
 }
 
 .game-over-overlay {
@@ -1210,6 +1263,10 @@ input:focus-visible {
     width: 24px;
     height: 24px;
     font-size: 0.68rem;
+  }
+
+  .playfield-controls .fullscreen-button {
+    display: none;
   }
 
   .game-stage {

@@ -263,6 +263,12 @@ const COLLAPSED_UPDATE_COUNT = 3;
 const EXPANDED_UPDATE_COUNT = 6;
 const GAME_UPDATES = [
   {
+    dateTime: "2026-05-21T00:08:00+02:00",
+    displayTime: "May 21, 2026 at 00:08",
+    title: "Boss Fight Clarity",
+    description: "Boss fights now show a tiny dodge hint, play boss-specific music, and use unique Dino, Crab, and Biber attacks.",
+  },
+  {
     dateTime: "2026-05-20T23:04:00+02:00",
     displayTime: "May 20, 2026 at 23:04",
     title: "Leaderboard Save Diagnostics",
@@ -848,6 +854,21 @@ function playSpawnSound() {
   playTone({ frequency: 300, duration: 0.04, type: "triangle", volume: 0.022, slideTo: 240 });
 }
 
+function playBossAttackSound(type) {
+  if (type === "bubble" || type === "claw") {
+    playTone({ frequency: 680, duration: 0.08, type: "triangle", volume: 0.035, slideTo: 940 });
+    playTone({ frequency: 340, duration: 0.08, type: "square", volume: 0.022, when: 0.04, slideTo: 260 });
+    return;
+  }
+  if (type === "log" || type === "branch") {
+    playTone({ frequency: 170, duration: 0.1, type: "square", volume: 0.038, slideTo: 105 });
+    playTone({ frequency: 260, duration: 0.06, type: "triangle", volume: 0.026, when: 0.05 });
+    return;
+  }
+  playTone({ frequency: 116.54, duration: 0.12, type: "sawtooth", volume: 0.04, slideTo: 220 });
+  playTone({ frequency: 440, duration: 0.05, type: "square", volume: 0.025, when: 0.06, slideTo: 330 });
+}
+
 function getAreaMusicPattern(area) {
   const patterns = [
     { lead: [261.63, 329.63, 392, 440, 392, 329.63, 293.66, 349.23], bass: [130.81, 98, 110, 98] },
@@ -867,6 +888,35 @@ function getAreaMusicPattern(area) {
     lead: [293.66, 392, 493.88, 587.33, 783.99, 659.25, 587.33, 493.88],
     bass: [73.42, 98, 123.47, 146.83],
   };
+  const bossPatterns = {
+    "boss-dinosaur": {
+      lead: [110, 146.83, 174.61, 220, 196, 174.61, 146.83, 123.47, 110, 220, 261.63, 196],
+      bass: [55, 55, 73.42, 65.41, 55, 82.41],
+      stab: [440, 392, 329.63, 293.66],
+      leadType: "sawtooth",
+      bassType: "square",
+      step: 0.18,
+    },
+    "boss-crab": {
+      lead: [523.25, 659.25, 587.33, 783.99, 698.46, 880, 783.99, 659.25, 587.33, 739.99],
+      bass: [98, 123.47, 92.5, 116.54, 98],
+      stab: [1046.5, 987.77, 880, 783.99],
+      leadType: "triangle",
+      bassType: "square",
+      step: 0.16,
+    },
+    "boss-biber": {
+      lead: [196, 246.94, 293.66, 261.63, 220, 329.63, 293.66, 246.94, 220, 196],
+      bass: [73.42, 98, 82.41, 110, 73.42],
+      stab: [392, 293.66, 440, 329.63],
+      leadType: "square",
+      bassType: "triangle",
+      step: 0.2,
+    },
+  };
+  if (bossPatterns[area]) {
+    return bossPatterns[area];
+  }
   if (area === "power") {
     return powerPattern;
   }
@@ -895,14 +945,14 @@ function scheduleAreaMusic(area) {
 
   const pattern = getAreaMusicPattern(area);
   const startTime = Math.max(audioState.context.currentTime + 0.03, audioState.nextMusicAt || audioState.context.currentTime + 0.03);
-  const step = 0.22;
+  const step = pattern.step || 0.22;
 
   pattern.lead.forEach((note, index) => {
     playTone({
       frequency: note,
-      duration: 0.12,
-      type: "square",
-      volume: 0.018,
+      duration: pattern.step ? 0.1 : 0.12,
+      type: pattern.leadType || "square",
+      volume: pattern.step ? 0.022 : 0.018,
       when: startTime - audioState.context.currentTime + index * step,
       output: audioState.musicGain,
     });
@@ -921,13 +971,27 @@ function scheduleAreaMusic(area) {
   pattern.bass.forEach((note, index) => {
     playTone({
       frequency: note,
-      duration: 0.28,
-      type: "triangle",
-      volume: 0.016,
+      duration: pattern.step ? 0.22 : 0.28,
+      type: pattern.bassType || "triangle",
+      volume: pattern.step ? 0.02 : 0.016,
       when: startTime - audioState.context.currentTime + index * step * 2,
       output: audioState.musicGain,
     });
   });
+
+  if (pattern.stab) {
+    pattern.stab.forEach((note, index) => {
+      playTone({
+        frequency: note,
+        duration: 0.05,
+        type: "sawtooth",
+        volume: 0.013,
+        when: startTime - audioState.context.currentTime + (index * 2 + 1) * step,
+        slideTo: note * 0.72,
+        output: audioState.musicGain,
+      });
+    });
+  }
 
   const loopDuration = pattern.lead.length * step;
   audioState.nextMusicAt = startTime + loopDuration;
@@ -953,6 +1017,7 @@ function startAreaMusic(area, forceRestart = false) {
 }
 
 function getDesiredMusic() {
+  if (state.boss) return `boss-${state.boss.type}`;
   if (state.bullUntil > state.frame) return "bull";
   if (state.rottenBoostUntil > state.frame) return "rotten";
   if (state.powerModeUntil > state.frame) return "power";
@@ -1467,6 +1532,7 @@ function spawnBossAttack() {
   const originX = boss.x + boss.width * 0.18;
   const originY = boss.y + boss.height * 0.55 + Math.sin(boss.phase) * 12;
   const targetY = state.horse.y - 58 + (Math.random() - 0.5) * 60;
+  const attackRoll = Math.random();
   const baseAttack = {
     x: originX,
     y: originY,
@@ -1479,26 +1545,48 @@ function spawnBossAttack() {
     height: 28,
   };
 
-  if (boss.type === "crab") {
+  if (boss.type === "dinosaur" && attackRoll < 0.36) {
     Object.assign(baseAttack, {
-      type: "bubble",
-      size: 16,
-      width: 32,
-      height: 32,
+      type: "meteor",
+      x: boss.x + boss.width * 0.05,
+      y: Math.max(56, state.horse.y - 280),
+      vx: -5.2 - Math.min(1.6, state.bossFightCount * 0.22),
+      vy: 2.5 + Math.random() * 0.9,
+      size: 21,
+      width: 42,
+      height: 42,
+    });
+  } else if (boss.type === "crab") {
+    Object.assign(baseAttack, {
+      type: attackRoll < 0.42 ? "claw" : "bubble",
+      size: attackRoll < 0.42 ? 19 : 16,
+      width: attackRoll < 0.42 ? 48 : 32,
+      height: attackRoll < 0.42 ? 30 : 32,
+      vx: attackRoll < 0.42 ? -8.6 : baseAttack.vx,
       vy: Math.max(-1.8, Math.min(1.8, (targetY - originY) / 65)),
     });
   } else if (boss.type === "biber") {
     Object.assign(baseAttack, {
-      type: "log",
-      y: GROUND_Y - 28,
+      type: attackRoll < 0.5 ? "log" : "branch",
+      y: attackRoll < 0.5 ? GROUND_Y - 28 : boss.y + 28,
       size: 18,
-      width: 54,
-      height: 24,
-      vy: 0,
+      width: attackRoll < 0.5 ? 54 : 46,
+      height: attackRoll < 0.5 ? 24 : 18,
+      vx: attackRoll < 0.5 ? -8.2 : -6.2,
+      vy: attackRoll < 0.5 ? 0 : 2.1,
     });
   }
 
   state.bossAttacks.push(baseAttack);
+  if (boss.type === "crab" && baseAttack.type === "bubble" && Math.random() < 0.45) {
+    state.bossAttacks.push({
+      ...baseAttack,
+      y: baseAttack.y + 44,
+      phase: baseAttack.phase + Math.PI,
+      vx: baseAttack.vx * 0.92,
+    });
+  }
+  playBossAttackSound(baseAttack.type);
 }
 
 function spawnBossWeaponPickup() {
@@ -1835,7 +1923,8 @@ function updateWorld() {
     if (state.bossAttackTimer <= 0) {
       spawnBossAttack();
       const pressure = Math.min(20, state.bossFightCount * 3);
-      state.bossAttackTimer = Math.max(46, 82 - pressure + Math.random() * 38);
+      const bossPace = state.boss.type === "crab" ? 72 : (state.boss.type === "biber" ? 88 : 82);
+      state.bossAttackTimer = Math.max(46, bossPace - pressure + Math.random() * 38);
     }
     state.bossPickupTimer -= 1;
     if (state.bossPickupTimer <= 0) {
@@ -1850,6 +1939,14 @@ function updateWorld() {
     attack.y += attack.vy;
     if (attack.type === "bubble") {
       attack.y += Math.sin(attack.phase) * 1.3;
+    } else if (attack.type === "claw") {
+      attack.y += Math.sin(attack.phase * 1.4) * 2.2;
+    } else if (attack.type === "meteor") {
+      attack.vy = Math.min(5.6, attack.vy + 0.075);
+      attack.x += Math.sin(attack.phase) * 0.8;
+    } else if (attack.type === "branch") {
+      attack.vy = Math.min(4.2, attack.vy + 0.04);
+      attack.y += Math.sin(attack.phase) * 0.8;
     }
   }
   state.bossAttacks = state.bossAttacks.filter((attack) => (
@@ -2374,7 +2471,7 @@ function drawBoss(boss) {
 function drawBossAttack(attack) {
   ctx.save();
   ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);
-  ctx.rotate(attack.type === "log" ? attack.phase * 1.2 : 0);
+  ctx.rotate(attack.type === "log" || attack.type === "branch" ? attack.phase * 1.2 : 0);
   if (attack.type === "bubble") {
     ctx.fillStyle = "rgba(123, 205, 255, 0.5)";
     ctx.strokeStyle = "rgba(22, 88, 137, 0.75)";
@@ -2386,6 +2483,24 @@ function drawBossAttack(attack) {
     ctx.fillStyle = "rgba(255,255,255,0.78)";
     ctx.beginPath();
     ctx.arc(-6, -7, 4, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (attack.type === "claw") {
+    ctx.fillStyle = "#f05243";
+    ctx.strokeStyle = "#7f1d1d";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-attack.width / 2, 0);
+    ctx.quadraticCurveTo(-8, -attack.height * 0.8, attack.width / 2, -7);
+    ctx.quadraticCurveTo(6, 0, attack.width / 2, 9);
+    ctx.quadraticCurveTo(-8, attack.height * 0.72, -attack.width / 2, 0);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#ffd1ca";
+    ctx.beginPath();
+    ctx.moveTo(attack.width / 2 - 8, -8);
+    ctx.lineTo(attack.width / 2 + 8, -13);
+    ctx.lineTo(attack.width / 2 - 2, 0);
+    ctx.closePath();
     ctx.fill();
   } else if (attack.type === "log") {
     ctx.fillStyle = "#7b5230";
@@ -2403,6 +2518,41 @@ function drawBossAttack(attack) {
     ctx.moveTo(-attack.width / 2 + 10, 5);
     ctx.lineTo(attack.width / 2 - 8, 5);
     ctx.stroke();
+  } else if (attack.type === "branch") {
+    ctx.strokeStyle = "#3e2514";
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(-attack.width / 2, 0);
+    ctx.lineTo(attack.width / 2, 0);
+    ctx.stroke();
+    ctx.strokeStyle = "#8b5a32";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(-8, 0);
+    ctx.lineTo(5, -15);
+    ctx.moveTo(8, 0);
+    ctx.lineTo(22, 12);
+    ctx.stroke();
+    ctx.fillStyle = "#5f7f35";
+    ctx.beginPath();
+    ctx.ellipse(8, -16, 8, 4, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (attack.type === "meteor") {
+    ctx.fillStyle = "rgba(255, 107, 35, 0.26)";
+    ctx.beginPath();
+    ctx.ellipse(-18, 0, 32, 13, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ff7043";
+    ctx.strokeStyle = "#8f2619";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, attack.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#ffd54f";
+    ctx.beginPath();
+    ctx.arc(-4, -5, attack.size * 0.42, 0, Math.PI * 2);
+    ctx.fill();
   } else {
     ctx.fillStyle = "#ff7043";
     ctx.strokeStyle = "#8f2619";
@@ -2424,33 +2574,45 @@ function drawBossFightHud() {
     return;
   }
   ctx.save();
-  ctx.fillStyle = "rgba(255, 250, 238, 0.9)";
+  ctx.fillStyle = "rgba(255, 250, 238, 0.86)";
   ctx.strokeStyle = "#6f4e37";
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.roundRect(WIDTH / 2 - 190, 18, 380, 70, 18);
+  ctx.roundRect(WIDTH / 2 - 150, 18, 300, 48, 15);
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = "#31261f";
-  ctx.font = "bold 20px Trebuchet MS";
+  ctx.font = "bold 16px Trebuchet MS";
   ctx.textAlign = "center";
-  ctx.fillText(`${state.boss.label} Boss Fight`, WIDTH / 2, 44);
-  ctx.font = "15px Trebuchet MS";
+  ctx.fillText(`${state.boss.label} Boss`, WIDTH / 2, 39);
+  ctx.font = "12px Trebuchet MS";
   const weaponText = state.bossWeapon && state.bossWeaponUntil > state.frame
     ? `${state.bossWeapon.label}: ${Math.ceil((state.bossWeaponUntil - state.frame) / 60)}s`
-    : "Grab weapon pickups for stronger shots.";
-  ctx.fillText(`A/D or arrows to dodge. ${weaponText}`, WIDTH / 2, 68);
+    : "grab weapons";
+  ctx.fillText(weaponText, WIDTH / 2, 57);
   ctx.textAlign = "left";
   for (let index = 0; index < BOSS_FIGHT_LIVES; index += 1) {
     ctx.fillStyle = index < state.bossLives ? "#ef4444" : "rgba(90,70,58,0.22)";
     ctx.beginPath();
-    const heartX = WIDTH / 2 + 120 + index * 26;
-    const heartY = 38;
+    const heartX = WIDTH / 2 + 94 + index * 20;
+    const heartY = 34;
     ctx.moveTo(heartX, heartY + 8);
-    ctx.bezierCurveTo(heartX - 18, heartY - 6, heartX - 8, heartY - 20, heartX, heartY - 10);
-    ctx.bezierCurveTo(heartX + 8, heartY - 20, heartX + 18, heartY - 6, heartX, heartY + 8);
+    ctx.bezierCurveTo(heartX - 13, heartY - 2, heartX - 7, heartY - 14, heartX, heartY - 7);
+    ctx.bezierCurveTo(heartX + 7, heartY - 14, heartX + 13, heartY - 2, heartX, heartY + 8);
     ctx.fill();
   }
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = "rgba(20, 12, 10, 0.5)";
+  ctx.strokeStyle = "rgba(255, 250, 238, 0.48)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(12, HEIGHT - 54, 214, 30, 12);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#fff7e6";
+  ctx.font = "bold 11px Trebuchet MS";
+  ctx.fillText("Boss dodge: A/D or ←/→ move", 24, HEIGHT - 35);
   ctx.restore();
 }
 

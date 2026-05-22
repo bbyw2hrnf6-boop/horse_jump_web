@@ -358,6 +358,12 @@ const INTRO_CONTENT = {
 };
 const GAME_UPDATES = [
   {
+    dateTime: "2026-05-22T00:13:00+02:00",
+    displayTime: "May 22, 2026 at 00:13",
+    title: "HD Cutouts And Living Ground",
+    description: "The new boss and obstacle sheets were re-cut into transparent sprites, animations are stronger, and the running ground now has richer grass, weeds, stones, flowers, and seasonal detail.",
+  },
+  {
     dateTime: "2026-05-21T23:37:00+02:00",
     displayTime: "May 21, 2026 at 23:37",
     title: "Living Sprite Animations",
@@ -964,32 +970,41 @@ function getBossSpriteMotion(boss) {
   const phase = spritePhase(boss.phase || 0, 0.075);
   const stomp = Math.sin(phase * 2);
   const motion = {
-    offsetX: Math.sin(phase * 0.7) * 1.6,
-    offsetY: Math.sin(phase) * 3,
-    rotation: Math.sin(phase * 0.55) * 0.018,
-    scaleX: 1 + Math.sin(phase) * 0.012,
-    scaleY: 1 - Math.sin(phase) * 0.01,
+    offsetX: Math.sin(phase * 0.7) * 2.2,
+    offsetY: Math.sin(phase) * 4.2,
+    rotation: Math.sin(phase * 0.55) * 0.024,
+    scaleX: 1 + Math.sin(phase) * 0.018,
+    scaleY: 1 - Math.sin(phase) * 0.014,
     shadow: 0.26,
+    shadowWidth: 0.36,
   };
 
   if (boss.type === "crab") {
-    motion.offsetX = Math.sin(phase * 1.7) * 2.8;
-    motion.rotation = Math.sin(phase * 1.2) * 0.026;
+    motion.offsetX = Math.sin(phase * 1.7) * 4.4;
+    motion.offsetY = Math.sin(phase * 1.25) * 3.4;
+    motion.rotation = Math.sin(phase * 1.2) * 0.04;
+    motion.scaleX = 1 + Math.sin(phase * 2.2) * 0.022;
   } else if (boss.type === "biber") {
-    motion.offsetY = Math.sin(phase * 1.25) * 2.4;
-    motion.rotation = Math.sin(phase * 0.9) * 0.014;
+    motion.offsetY = Math.sin(phase * 1.25) * 3.8;
+    motion.rotation = Math.sin(phase * 0.9) * 0.024;
+    motion.scaleX = 1 + Math.sin(phase * 1.7) * 0.016;
   } else if (boss.type === "alien") {
-    motion.offsetY = Math.sin(phase * 1.4) * 7;
-    motion.rotation = Math.sin(phase * 0.72) * 0.012;
+    motion.offsetY = Math.sin(phase * 1.4) * 10;
+    motion.rotation = Math.sin(phase * 0.72) * 0.018;
+    motion.scaleY = 1 + Math.sin(phase * 1.6) * 0.018;
     motion.shadow = 0.14;
+    motion.shadowWidth = 0.28;
   } else if (boss.type === "dinosaur") {
-    motion.offsetX = Math.sin(phase * 0.9) * 2;
-    motion.offsetY = Math.max(-2, stomp * 4);
-    motion.scaleY = 1 + Math.max(0, stomp) * 0.018;
+    motion.offsetX = Math.sin(phase * 0.9) * 3;
+    motion.offsetY = Math.max(-2, stomp * 6.4);
+    motion.rotation = Math.sin(phase * 0.6) * 0.03;
+    motion.scaleY = 1 + Math.max(0, stomp) * 0.03;
   } else if (boss.type === "bigfoot") {
-    motion.offsetY = Math.max(-1, Math.sin(phase * 1.8) * 4.5);
-    motion.rotation = Math.sin(phase * 0.82) * 0.018;
-    motion.scaleX = 1 + Math.max(0, -stomp) * 0.018;
+    motion.offsetX = Math.sin(phase * 0.8) * 2.6;
+    motion.offsetY = Math.max(-1, Math.sin(phase * 1.8) * 7);
+    motion.rotation = Math.sin(phase * 0.82) * 0.03;
+    motion.scaleX = 1 + Math.max(0, -stomp) * 0.026;
+    motion.scaleY = 1 + Math.max(0, stomp) * 0.018;
   }
   return motion;
 }
@@ -1007,19 +1022,23 @@ function getObstacleSpriteMotion(obstacle) {
   };
 
   if (["bush", "fence", "scarecrow"].includes(obstacle.type)) {
-    motion.rotation = Math.sin(phase) * 0.035;
+    motion.rotation = Math.sin(phase) * 0.06;
+    motion.offsetY = Math.sin(phase * 1.2) * 1.5;
   } else if (["sheep", "cow", "rooster", "farmer"].includes(obstacle.type)) {
-    motion.offsetY = Math.sin(phase * 1.4) * 2.2;
-    motion.scaleY = 1 + Math.sin(phase * 1.4) * 0.018;
+    motion.offsetY = Math.sin(phase * 1.4) * 3.6;
+    motion.rotation = Math.sin(phase * 0.8) * 0.018;
+    motion.scaleY = 1 + Math.sin(phase * 1.4) * 0.028;
   } else if (["tractor", "wagon", "barrel"].includes(obstacle.type)) {
-    motion.offsetY = Math.sin(phase * 2.4) * 1.5;
-    motion.rotation = Math.sin(phase * 1.9) * 0.015;
+    motion.offsetY = Math.sin(phase * 2.4) * 2.4;
+    motion.rotation = Math.sin(phase * 1.9) * 0.024;
   } else if (obstacle.type === "windmill") {
-    motion.rotation = Math.sin(phase * 0.7) * 0.012;
+    motion.rotation = Math.sin(phase * 0.7) * 0.022;
+    motion.offsetY = Math.sin(phase) * 1.8;
   } else if (["hay", "crate", "log", "hurdle", "mailbox"].includes(obstacle.type)) {
-    motion.offsetY = Math.sin(phase * 0.85) * 0.8;
+    motion.offsetY = Math.sin(phase * 0.85) * 1.4;
+    motion.rotation = Math.sin(phase * 0.64) * 0.012;
   } else if (obstacle.type === "spike") {
-    motion.scaleY = 1 + Math.sin(phase * 1.9) * 0.014;
+    motion.scaleY = 1 + Math.sin(phase * 1.9) * 0.026;
   }
   return motion;
 }
@@ -1089,7 +1108,7 @@ function drawBossSpriteEffects(boss, box) {
   const phase = spritePhase(boss.phase || 0, 0.08);
   ctx.save();
   if (boss.type === "dinosaur") {
-    ctx.strokeStyle = "rgba(250, 204, 21, 0.5)";
+    ctx.strokeStyle = "rgba(250, 204, 21, 0.62)";
     ctx.lineWidth = 3;
     for (let i = 0; i < 3; i += 1) {
       const x = box.x + box.width * (0.68 + i * 0.05);
@@ -1099,12 +1118,34 @@ function drawBossSpriteEffects(boss, box) {
       ctx.lineTo(x + 18 + i * 6, y - 8 - i * 4);
       ctx.stroke();
     }
+    for (let i = 0; i < 4; i += 1) {
+      ctx.fillStyle = `rgba(255, 190, 70, ${0.2 + Math.sin(phase * 2 + i) * 0.08})`;
+      ctx.beginPath();
+      ctx.ellipse(
+        box.x + box.width * (0.74 + i * 0.035),
+        box.y + box.height * (0.39 - i * 0.018),
+        7 + i * 2,
+        3 + i,
+        -0.25,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+    }
   } else if (boss.type === "biber") {
     ctx.fillStyle = "rgba(245, 158, 11, 0.72)";
     for (let i = 0; i < 5; i += 1) {
       const x = box.x + box.width * (0.52 + i * 0.055);
       const y = box.y + box.height * (0.55 + Math.sin(phase + i) * 0.045);
       ctx.fillRect(x, y, 5, 2);
+    }
+    ctx.fillStyle = "rgba(113, 74, 38, 0.5)";
+    for (let i = 0; i < 3; i += 1) {
+      ctx.save();
+      ctx.translate(box.x + box.width * (0.72 + i * 0.05), box.y + box.height * (0.34 + Math.sin(phase + i) * 0.04));
+      ctx.rotate(phase + i);
+      ctx.fillRect(-5, -1, 10, 2);
+      ctx.restore();
     }
   } else if (boss.type === "alien") {
     for (let i = 0; i < 4; i += 1) {
@@ -1113,6 +1154,21 @@ function drawBossSpriteEffects(boss, box) {
       ctx.arc(box.x + box.width * (0.28 + i * 0.14), box.y + box.height * 0.44, 4.5, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.strokeStyle = `rgba(76, 255, 128, ${0.28 + Math.sin(phase * 2.4) * 0.1})`;
+    ctx.lineWidth = 2;
+    for (let ring = 0; ring < 3; ring += 1) {
+      ctx.beginPath();
+      ctx.ellipse(
+        box.x + box.width / 2,
+        box.y + box.height * (0.58 + ring * 0.095),
+        box.width * (0.18 + ring * 0.08),
+        6 + ring * 3,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      ctx.stroke();
+    }
   } else if (boss.type === "crab") {
     ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
     for (let i = 0; i < 4; i += 1) {
@@ -1120,12 +1176,32 @@ function drawBossSpriteEffects(boss, box) {
       ctx.arc(box.x + box.width * (0.28 + i * 0.13), box.y + box.height * (0.68 + Math.sin(phase + i) * 0.05), 2.8, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.strokeStyle = `rgba(255, 205, 90, ${0.35 + Math.sin(phase * 3) * 0.12})`;
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 4; i += 1) {
+      const side = i < 2 ? -1 : 1;
+      const x = box.x + box.width * (side < 0 ? 0.16 : 0.84);
+      const y = box.y + box.height * (0.26 + (i % 2) * 0.09);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + side * (12 + Math.sin(phase + i) * 4), y - 7);
+      ctx.stroke();
+    }
   } else if (boss.type === "bigfoot") {
     ctx.fillStyle = "rgba(120, 53, 15, 0.25)";
     for (let i = 0; i < 5; i += 1) {
       ctx.beginPath();
       ctx.ellipse(box.x + box.width * (0.25 + i * 0.13), box.y + box.height - 5, 9, 3, 0, 0, Math.PI * 2);
       ctx.fill();
+    }
+    ctx.strokeStyle = `rgba(88, 52, 30, ${0.38 + Math.max(0, Math.sin(phase * 2)) * 0.2})`;
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 4; i += 1) {
+      const x = box.x + box.width * (0.3 + i * 0.12);
+      ctx.beginPath();
+      ctx.moveTo(x, box.y + box.height - 7);
+      ctx.lineTo(x + 16, box.y + box.height + 5 + i);
+      ctx.stroke();
     }
   }
   ctx.restore();
@@ -1196,6 +1272,37 @@ function drawObstacleSpriteEffects(obstacle, box) {
     ctx.arc(box.x + box.width * 0.63, box.y + box.height * 0.25, 2.2, 0, Math.PI * 2);
     ctx.arc(box.x + box.width * 0.42, box.y + box.height * 0.34, 1.8, 0, Math.PI * 2);
     ctx.fill();
+  } else if (obstacle.type === "mailbox") {
+    ctx.strokeStyle = `rgba(239, 68, 68, ${0.42 + Math.sin(phase * 2) * 0.12})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(box.x + box.width * 0.64, box.y + box.height * 0.25);
+    ctx.lineTo(box.x + box.width * 0.78, box.y + box.height * 0.18 + Math.sin(phase) * 5);
+    ctx.stroke();
+  } else if (obstacle.type === "rooster") {
+    ctx.strokeStyle = "rgba(255,255,255,0.48)";
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 3; i += 1) {
+      ctx.beginPath();
+      ctx.arc(box.x + box.width * 0.7, box.y + box.height * (0.18 + i * 0.08), 8 + i * 5 + Math.sin(phase) * 2, -0.6, 0.7);
+      ctx.stroke();
+    }
+  } else if (obstacle.type === "farmer") {
+    ctx.strokeStyle = `rgba(255,255,255,${0.35 + Math.sin(phase * 2) * 0.14})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(box.x + box.width * 0.78, box.y + box.height * 0.1);
+    ctx.lineTo(box.x + box.width * 0.88, box.y + box.height * 0.05);
+    ctx.stroke();
+  } else if (obstacle.type === "scarecrow") {
+    ctx.strokeStyle = "rgba(250, 204, 21, 0.45)";
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 4; i += 1) {
+      ctx.beginPath();
+      ctx.moveTo(box.x + box.width * (0.22 + i * 0.16), box.y + box.height * 0.78);
+      ctx.lineTo(box.x + box.width * (0.18 + i * 0.16), box.y + box.height * 0.9 + Math.sin(phase + i) * 3);
+      ctx.stroke();
+    }
   }
   ctx.restore();
 }
@@ -5514,6 +5621,117 @@ function drawSeasonAtmosphere(theme) {
   }
 }
 
+function getGroundDetailPalette(theme) {
+  if (theme.season === "hardcore") {
+    return { turf: "#34211c", turf2: "#160d13", blade: "#7f1d1d", blade2: "#f97316", flower: "#fb7185", soil: "#211016", stone: "#4b2730", edge: "rgba(255, 95, 31, 0.45)", shadow: "rgba(0, 0, 0, 0.34)" };
+  }
+  if (theme.season === "winter") {
+    return { turf: "#f5fbff", turf2: "#b9dff2", blade: "#8ec5dc", blade2: "#e8fbff", flower: "#d7f5ff", soil: "#8eb7cc", stone: "#dbeafe", edge: "rgba(255,255,255,0.7)", shadow: "rgba(43, 89, 115, 0.18)" };
+  }
+  if (theme.season === "autumn") {
+    return { turf: "#b96d2d", turf2: "#6f3a1e", blade: "#d97706", blade2: "#facc15", flower: "#f97316", soil: "#5a2f1e", stone: "#8b5e34", edge: "rgba(255, 196, 87, 0.36)", shadow: "rgba(46, 24, 12, 0.28)" };
+  }
+  if (theme.season === "summer") {
+    return { turf: "#8bc34a", turf2: "#3e7c26", blade: "#b8d94e", blade2: "#f3d35b", flower: "#fff1a8", soil: "#8a542c", stone: "#ad7a45", edge: "rgba(255, 230, 128, 0.4)", shadow: "rgba(52, 74, 28, 0.24)" };
+  }
+  return { turf: "#69b83f", turf2: "#256a2f", blade: "#9be15b", blade2: "#e7ff86", flower: "#fff7ad", soil: "#7b4b2c", stone: "#a8794e", edge: "rgba(230, 255, 150, 0.38)", shadow: "rgba(35, 72, 31, 0.24)" };
+}
+
+function drawGroundBlade(x, baseY, height, lean, color, width = 1.6) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.moveTo(x, baseY);
+  ctx.quadraticCurveTo(x + lean * 0.45, baseY - height * 0.52, x + lean, baseY - height);
+  ctx.stroke();
+}
+
+function drawRichGroundCap(theme) {
+  const palette = getGroundDetailPalette(theme);
+  const fastOffset = -(state.scrollDistance * 0.92) % 108;
+  const slowOffset = -(state.scrollDistance * 0.48) % 150;
+  const sway = Math.sin(state.frame * 0.055);
+
+  ctx.save();
+  ctx.fillStyle = palette.shadow;
+  ctx.fillRect(0, GROUND_Y - 2, WIDTH, 9);
+
+  const dirtGradient = ctx.createLinearGradient(0, GROUND_Y + 4, 0, GROUND_Y + 44);
+  dirtGradient.addColorStop(0, palette.soil);
+  dirtGradient.addColorStop(1, theme.ground2);
+  ctx.fillStyle = dirtGradient;
+  ctx.beginPath();
+  ctx.moveTo(0, GROUND_Y + 12);
+  for (let x = -20; x <= WIDTH + 50; x += 48) {
+    const wave = Math.sin((x + state.scrollDistance) * 0.02) * 4;
+    ctx.quadraticCurveTo(x + 24, GROUND_Y + 20 + wave, x + 48, GROUND_Y + 12);
+  }
+  ctx.lineTo(WIDTH, GROUND_Y + 54);
+  ctx.lineTo(0, GROUND_Y + 54);
+  ctx.closePath();
+  ctx.fill();
+
+  const capGradient = ctx.createLinearGradient(0, GROUND_Y - 14, 0, GROUND_Y + 16);
+  capGradient.addColorStop(0, palette.blade2);
+  capGradient.addColorStop(0.48, palette.turf);
+  capGradient.addColorStop(1, palette.turf2);
+  ctx.fillStyle = capGradient;
+  ctx.beginPath();
+  ctx.moveTo(0, GROUND_Y + 12);
+  for (let x = -24; x <= WIDTH + 64; x += 40) {
+    const wave = Math.sin((x + state.scrollDistance) * 0.036) * 3;
+    ctx.quadraticCurveTo(x + 20, GROUND_Y - 5 + wave, x + 40, GROUND_Y + 10);
+  }
+  ctx.lineTo(WIDTH, GROUND_Y + 25);
+  ctx.lineTo(0, GROUND_Y + 25);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = palette.edge;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let x = fastOffset - 120; x < WIDTH + 140; x += 54) {
+    ctx.moveTo(x, GROUND_Y + 4);
+    ctx.quadraticCurveTo(x + 20, GROUND_Y - 6, x + 52, GROUND_Y + 4);
+  }
+  ctx.stroke();
+
+  for (let x = fastOffset - 120; x < WIDTH + 140; x += 18) {
+    const seed = Math.floor((x + 4000) * 17) % 9;
+    const baseY = GROUND_Y + 9 + (seed % 3);
+    const height = 14 + seed * 1.8;
+    const lean = Math.sin(state.frame * 0.055 + seed + x * 0.04) * 7;
+    drawGroundBlade(x, baseY, height, lean, seed % 2 ? palette.blade : palette.blade2, 1.25 + (seed % 3) * 0.25);
+    if (seed % 4 === 0) {
+      drawGroundBlade(x + 5, baseY + 2, height * 0.72, -lean * 0.5 + 3, palette.turf2, 1.1);
+    }
+  }
+
+  for (let x = slowOffset - 150; x < WIDTH + 160; x += 150) {
+    const clusterY = GROUND_Y + 11;
+    for (let blade = 0; blade < 7; blade += 1) {
+      const bx = x + blade * 5;
+      drawGroundBlade(bx, clusterY, 20 + (blade % 3) * 5, Math.sin(sway + blade) * 9, blade % 2 ? palette.blade : palette.turf, 1.6);
+    }
+    if (theme.season !== "hardcore" && theme.season !== "winter") {
+      ctx.fillStyle = palette.flower;
+      ctx.beginPath();
+      ctx.arc(x + 18, GROUND_Y - 14 + Math.sin(state.frame * 0.04 + x) * 1.5, 3.2, 0, Math.PI * 2);
+      ctx.arc(x + 28, GROUND_Y - 9, 2.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.fillStyle = palette.stone;
+  for (let x = fastOffset - 80; x < WIDTH + 120; x += 86) {
+    const y = GROUND_Y + 28 + (Math.floor(x) % 4) * 4;
+    ctx.beginPath();
+    ctx.ellipse(x, y, 7 + (Math.floor(x) % 3) * 2, 3.5, -0.18, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawGroundTexture(theme) {
   const groundGradient = ctx.createLinearGradient(0, GROUND_Y, 0, HEIGHT);
   groundGradient.addColorStop(0, theme.ground);
@@ -5523,6 +5741,7 @@ function drawGroundTexture(theme) {
   ctx.fillRect(0, GROUND_Y, WIDTH, HEIGHT - GROUND_Y);
 
   const offset = -(state.scrollDistance * 0.55) % 42;
+  drawRichGroundCap(theme);
 
   if (theme.season === "hardcore") {
     // Hardcore keeps all lava details, but the ground pulse updates less often to reduce canvas work.

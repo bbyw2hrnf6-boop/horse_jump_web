@@ -346,9 +346,9 @@ const INTRO_CONTENT = {
   hardcore: {
     title: "Hardcore Mode: Boss Rush",
     copy: "Hardcore adds darker maps, flying enemies, boss fights, weapons, and a separate Hardcore leaderboard. Survive the run, then defeat each boss.",
-    mobileCopy: "Tap to jump. Boss fight: drag left/right. Grab weapons.",
+    mobileCopy: "Tap to jump. Boss fight: tap to jump, drag left/right, grab weapons.",
     controlsTitle: "Hardcore Controls",
-    controlsCopy: "`Space` or tap to jump. Boss fights: use `A/D`, arrow keys, or mobile drag to dodge targeted attacks.",
+    controlsCopy: "`Space`, `W`, `Arrow Up`, or tap to jump. Boss fights: use `A/D`, arrow keys, or mobile drag to dodge targeted attacks.",
     powerTitle: "Boss Tools",
     powerCopy: "Collect boss weapons for spread, laser, or mega carrots. Red apples still protect you, rotten apples only make you faster.",
     goalTitle: "Hardcore Goal",
@@ -357,6 +357,12 @@ const INTRO_CONTENT = {
   },
 };
 const GAME_UPDATES = [
+  {
+    dateTime: "2026-06-24T11:33:00+02:00",
+    displayTime: "June 24, 2026 at 11:33",
+    title: "Boss Fight Jump Fix",
+    description: "Hardcore boss fights now let the horse jump with Space, W, Arrow Up, or mobile taps while still supporting left/right dodge movement.",
+  },
   {
     dateTime: "2026-05-22T00:13:00+02:00",
     displayTime: "May 22, 2026 at 00:13",
@@ -2210,6 +2216,16 @@ function jump() {
   }
 }
 
+function isJumpKey(event) {
+  if (event.code === "Space") {
+    return true;
+  }
+  if (state.awaitingScoreEntry) {
+    return false;
+  }
+  return event.code === "ArrowUp" || event.code === "KeyW";
+}
+
 function buildObstacle(type, x) {
   const specs = {
     hay: { width: 50, height: 40, color: "#e9c861" },
@@ -2346,7 +2362,7 @@ function spawnBoss() {
     moveTimer: 80,
     phase: Math.random() * Math.PI * 2,
   };
-  state.status = `${bossType.label} boss fight. 3 hearts, unlimited carrot blaster, move with A/D or arrows.`;
+  state.status = `${bossType.label} boss fight. Jump with Space/W/tap, move with A/D or arrows.`;
   spawnCelebrationBurst(WIDTH - 140, 110, ["#ff7043", "#ffd54f", "#66d2a7"]);
   playSpawnSound();
 }
@@ -4058,12 +4074,12 @@ function drawBossFightHud() {
   ctx.strokeStyle = "rgba(255, 250, 238, 0.48)";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.roundRect(12, HEIGHT - 54, 214, 30, 12);
+  ctx.roundRect(12, HEIGHT - 54, 248, 30, 12);
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = "#fff7e6";
   ctx.font = "bold 11px Trebuchet MS";
-  ctx.fillText("Boss dodge: A/D or ←/→ move", 24, HEIGHT - 35);
+  ctx.fillText("Boss: Space/W/tap jump, A/D move", 24, HEIGHT - 35);
   ctx.restore();
 }
 
@@ -6466,7 +6482,7 @@ document.addEventListener("keydown", (event) => {
     state.input.right = true;
     if (isBossFightActive()) event.preventDefault();
   }
-  if (event.code === "Space") {
+  if (isJumpKey(event)) {
     event.preventDefault();
     if (!state.hasStarted) {
       startRun();
@@ -6545,6 +6561,7 @@ canvas.addEventListener("touchstart", (event) => {
     resetGame();
   } else if (isBossFightActive() && !state.awaitingScoreEntry) {
     updateTouchBossMovement(event);
+    jump();
   } else if (!state.awaitingScoreEntry) {
     jump();
   }

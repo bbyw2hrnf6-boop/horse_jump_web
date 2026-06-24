@@ -61,13 +61,13 @@ OBSTACLE_CROPS_HD = {
     "fence": (815, 180, 1025, 365),
     "log": (1020, 185, 1215, 365),
     "hurdle": (1228, 178, 1402, 365),
-    "mailbox": (1405, 165, 1538, 375),
+    "mailbox": (1405, 165, 1527, 375),
     "farmer": (1530, 125, 1684, 382),
     "tractor": (20, 458, 286, 714),
     "spike": (296, 548, 460, 712),
-    "sheep": (462, 486, 660, 714),
+    "sheep": (462, 486, 648, 714),
     "scarecrow": (662, 422, 822, 715),
-    "rooster": (824, 462, 1008, 715),
+    "rooster": (846, 462, 1008, 715),
     "wagon": (1020, 486, 1242, 715),
     "windmill": (1270, 420, 1430, 715),
     "cow": (1436, 486, 1680, 715),
@@ -125,6 +125,62 @@ def remove_connected_backdrop(image, tolerance=68):
     return rgba
 
 
+def remove_edge_connected_pixels(image, predicate):
+    """Make matching border-connected pixels transparent without touching interior detail."""
+    rgba = image.convert("RGBA")
+    width, height = rgba.size
+    pixels = rgba.load()
+    queue = deque()
+    seen = set()
+
+    def exposed(x, y):
+        for nx, ny in (
+            (x - 1, y - 1), (x, y - 1), (x + 1, y - 1),
+            (x - 1, y), (x + 1, y),
+            (x - 1, y + 1), (x, y + 1), (x + 1, y + 1),
+        ):
+            if not (0 <= nx < width and 0 <= ny < height) or pixels[nx, ny][3] == 0:
+                return True
+        return False
+
+    for y in range(height):
+        for x in range(width):
+            if pixels[x, y][3] > 0 and exposed(x, y) and predicate(pixels[x, y]):
+                queue.append((x, y))
+                seen.add((x, y))
+
+    while queue:
+        x, y = queue.popleft()
+        r, g, b, _ = pixels[x, y]
+        pixels[x, y] = (r, g, b, 0)
+        for nx, ny in (
+            (x - 1, y - 1), (x, y - 1), (x + 1, y - 1),
+            (x - 1, y), (x + 1, y),
+            (x - 1, y + 1), (x, y + 1), (x + 1, y + 1),
+        ):
+            if 0 <= nx < width and 0 <= ny < height and (nx, ny) not in seen:
+                if pixels[nx, ny][3] > 0 and predicate(pixels[nx, ny]):
+                    seen.add((nx, ny))
+                    queue.append((nx, ny))
+    return rgba
+
+
+def remove_white_sticker_outline(image):
+    """Remove the intentionally white framing around the HD boss illustrations."""
+    return remove_edge_connected_pixels(
+        image,
+        lambda pixel: min(pixel[:3]) >= 178 and max(pixel[:3]) - min(pixel[:3]) <= 58,
+    )
+
+
+def remove_white_background_halo(image):
+    """Clean residual white matte from sprites extracted from a white sheet."""
+    return remove_edge_connected_pixels(
+        image,
+        lambda pixel: min(pixel[:3]) >= 238 and max(pixel[:3]) - min(pixel[:3]) <= 25,
+    )
+
+
 def trim_transparent(image, padding=8):
     alpha_box = image.getchannel("A").getbbox()
     if not alpha_box:
@@ -173,7 +229,7 @@ def keep_largest_component(image):
     return rgba
 
 
-def split_sheet(source_path, crop_map, output_dir, isolate_main=False):
+def split_sheet(source_path, crop_map, output_dir, isolate_main=False, strip_white_frame=False, strip_white_halo=False):
     source = Image.open(source_path).convert("RGBA")
     output_dir.mkdir(parents=True, exist_ok=True)
     written = []
@@ -182,6 +238,10 @@ def split_sheet(source_path, crop_map, output_dir, isolate_main=False):
         sprite = remove_connected_backdrop(sprite)
         if isolate_main:
             sprite = keep_largest_component(sprite)
+        if strip_white_frame:
+            sprite = remove_white_sticker_outline(sprite)
+        if strip_white_halo:
+            sprite = remove_white_background_halo(sprite)
         sprite = trim_transparent(sprite)
         output_path = output_dir / f"{name}.png"
         sprite.save(output_path, optimize=True)
@@ -193,8 +253,19 @@ def main():
     if not BOSS_SOURCE.exists() or not OBSTACLE_SOURCE.exists():
         raise SystemExit("Expected a boss sheet and assets/image.png to exist.")
     written = []
-    written += split_sheet(BOSS_SOURCE, BOSS_CROPS, SPRITE_DIR / "bosses", isolate_main=True)
-    written += split_sheet(OBSTACLE_SOURCE, OBSTACLE_CROPS, SPRITE_DIR / "obstacles")
+    written += split_sheet(
+        BOSS_SOURCE,
+        BOSS_CROPS,
+        SPRITE_DIR / "bosses",
+        isolate_main=True,
+        strip_white_frame=BOSS_SOURCE == NEW_BOSS_SOURCE,
+    )
+    written += split_sheet(
+        OBSTACLE_SOURCE,
+        OBSTACLE_CROPS,
+        SPRITE_DIR / "obstacles",
+        strip_white_halo=OBSTACLE_SOURCE == NEW_OBSTACLE_SOURCE,
+    )
     for path in written:
         print(path.relative_to(ROOT))
 

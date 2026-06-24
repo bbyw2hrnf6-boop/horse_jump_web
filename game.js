@@ -358,6 +358,12 @@ const INTRO_CONTENT = {
 };
 const GAME_UPDATES = [
   {
+    dateTime: "2026-06-24T11:45:00+02:00",
+    displayTime: "June 24, 2026 at 11:45",
+    title: "Calmer Ground Motion",
+    description: "The running floor now uses fewer grass blades, rocks, flowers, and lava accents with slower movement so the playfield feels more relaxed.",
+  },
+  {
     dateTime: "2026-06-24T11:33:00+02:00",
     displayTime: "June 24, 2026 at 11:33",
     title: "Boss Fight Jump Fix",
@@ -5664,9 +5670,9 @@ function drawGroundBlade(x, baseY, height, lean, color, width = 1.6) {
 
 function drawRichGroundCap(theme) {
   const palette = getGroundDetailPalette(theme);
-  const fastOffset = -(state.scrollDistance * 0.92) % 108;
-  const slowOffset = -(state.scrollDistance * 0.48) % 150;
-  const sway = Math.sin(state.frame * 0.055);
+  const detailOffset = -(state.scrollDistance * 0.42) % 160;
+  const clusterOffset = -(state.scrollDistance * 0.2) % 260;
+  const sway = Math.sin(state.frame * 0.022);
 
   ctx.save();
   ctx.fillStyle = palette.shadow;
@@ -5679,7 +5685,7 @@ function drawRichGroundCap(theme) {
   ctx.beginPath();
   ctx.moveTo(0, GROUND_Y + 12);
   for (let x = -20; x <= WIDTH + 50; x += 48) {
-    const wave = Math.sin((x + state.scrollDistance) * 0.02) * 4;
+    const wave = Math.sin((x + state.scrollDistance * 0.35) * 0.014) * 2.2;
     ctx.quadraticCurveTo(x + 24, GROUND_Y + 20 + wave, x + 48, GROUND_Y + 12);
   }
   ctx.lineTo(WIDTH, GROUND_Y + 54);
@@ -5695,7 +5701,7 @@ function drawRichGroundCap(theme) {
   ctx.beginPath();
   ctx.moveTo(0, GROUND_Y + 12);
   for (let x = -24; x <= WIDTH + 64; x += 40) {
-    const wave = Math.sin((x + state.scrollDistance) * 0.036) * 3;
+    const wave = Math.sin((x + state.scrollDistance * 0.45) * 0.022) * 1.8;
     ctx.quadraticCurveTo(x + 20, GROUND_Y - 5 + wave, x + 40, GROUND_Y + 10);
   }
   ctx.lineTo(WIDTH, GROUND_Y + 25);
@@ -5704,45 +5710,44 @@ function drawRichGroundCap(theme) {
   ctx.fill();
 
   ctx.strokeStyle = palette.edge;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 1.4;
   ctx.beginPath();
-  for (let x = fastOffset - 120; x < WIDTH + 140; x += 54) {
+  for (let x = detailOffset - 160; x < WIDTH + 180; x += 96) {
     ctx.moveTo(x, GROUND_Y + 4);
     ctx.quadraticCurveTo(x + 20, GROUND_Y - 6, x + 52, GROUND_Y + 4);
   }
   ctx.stroke();
 
-  for (let x = fastOffset - 120; x < WIDTH + 140; x += 18) {
+  for (let x = detailOffset - 160; x < WIDTH + 180; x += 42) {
     const seed = Math.floor((x + 4000) * 17) % 9;
     const baseY = GROUND_Y + 9 + (seed % 3);
-    const height = 14 + seed * 1.8;
-    const lean = Math.sin(state.frame * 0.055 + seed + x * 0.04) * 7;
-    drawGroundBlade(x, baseY, height, lean, seed % 2 ? palette.blade : palette.blade2, 1.25 + (seed % 3) * 0.25);
-    if (seed % 4 === 0) {
-      drawGroundBlade(x + 5, baseY + 2, height * 0.72, -lean * 0.5 + 3, palette.turf2, 1.1);
+    const height = 10 + seed;
+    const lean = Math.sin(state.frame * 0.024 + seed + x * 0.025) * 3.4;
+    drawGroundBlade(x, baseY, height, lean, seed % 2 ? palette.blade : palette.blade2, 1.05 + (seed % 2) * 0.2);
+    if (seed % 6 === 0) {
+      drawGroundBlade(x + 5, baseY + 2, height * 0.62, -lean * 0.42 + 2, palette.turf2, 0.95);
     }
   }
 
-  for (let x = slowOffset - 150; x < WIDTH + 160; x += 150) {
+  for (let x = clusterOffset - 260; x < WIDTH + 280; x += 260) {
     const clusterY = GROUND_Y + 11;
-    for (let blade = 0; blade < 7; blade += 1) {
-      const bx = x + blade * 5;
-      drawGroundBlade(bx, clusterY, 20 + (blade % 3) * 5, Math.sin(sway + blade) * 9, blade % 2 ? palette.blade : palette.turf, 1.6);
+    for (let blade = 0; blade < 4; blade += 1) {
+      const bx = x + blade * 6;
+      drawGroundBlade(bx, clusterY, 15 + (blade % 2) * 4, Math.sin(sway + blade) * 4.5, blade % 2 ? palette.blade : palette.turf, 1.25);
     }
     if (theme.season !== "hardcore" && theme.season !== "winter") {
       ctx.fillStyle = palette.flower;
       ctx.beginPath();
-      ctx.arc(x + 18, GROUND_Y - 14 + Math.sin(state.frame * 0.04 + x) * 1.5, 3.2, 0, Math.PI * 2);
-      ctx.arc(x + 28, GROUND_Y - 9, 2.4, 0, Math.PI * 2);
+      ctx.arc(x + 18, GROUND_Y - 12 + Math.sin(state.frame * 0.018 + x) * 0.8, 2.4, 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
   ctx.fillStyle = palette.stone;
-  for (let x = fastOffset - 80; x < WIDTH + 120; x += 86) {
+  for (let x = detailOffset - 120; x < WIDTH + 160; x += 150) {
     const y = GROUND_Y + 28 + (Math.floor(x) % 4) * 4;
     ctx.beginPath();
-    ctx.ellipse(x, y, 7 + (Math.floor(x) % 3) * 2, 3.5, -0.18, 0, Math.PI * 2);
+    ctx.ellipse(x, y, 5 + (Math.floor(x) % 2) * 1.5, 2.8, -0.18, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
@@ -5756,29 +5761,28 @@ function drawGroundTexture(theme) {
   ctx.fillStyle = groundGradient;
   ctx.fillRect(0, GROUND_Y, WIDTH, HEIGHT - GROUND_Y);
 
-  const offset = -(state.scrollDistance * 0.55) % 42;
+  const offset = -(state.scrollDistance * 0.28) % 70;
   drawRichGroundCap(theme);
 
   if (theme.season === "hardcore") {
-    // Hardcore keeps all lava details, but the ground pulse updates less often to reduce canvas work.
-    const groundAnimFrame = Math.floor(state.frame / 3) * 3;
-    const lavaOffset = -(state.scrollDistance * 0.9) % 110;
-    ctx.fillStyle = "rgba(255, 88, 24, 0.3)";
+    const groundAnimFrame = Math.floor(state.frame / 8) * 8;
+    const lavaOffset = -(state.scrollDistance * 0.36) % 180;
+    ctx.fillStyle = "rgba(255, 88, 24, 0.16)";
     ctx.beginPath();
     ctx.moveTo(0, GROUND_Y + 10);
     for (let x = 0; x <= WIDTH + 80; x += 80) {
-      ctx.quadraticCurveTo(x + 36, GROUND_Y + 4 + Math.sin((groundAnimFrame + x) * 0.025) * 8, x + 80, GROUND_Y + 12);
+      ctx.quadraticCurveTo(x + 36, GROUND_Y + 6 + Math.sin((groundAnimFrame + x) * 0.016) * 3.5, x + 80, GROUND_Y + 12);
     }
     ctx.lineTo(WIDTH, HEIGHT);
     ctx.lineTo(0, HEIGHT);
     ctx.closePath();
     ctx.fill();
 
-    ctx.strokeStyle = "rgba(255, 122, 24, 0.82)";
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(255, 122, 24, 0.44)";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    for (let x = lavaOffset - 110; x < WIDTH + 120; x += 110) {
-      const y = GROUND_Y + 28 + ((Math.floor(x / 110) % 4) * 26);
+    for (let x = lavaOffset - 180; x < WIDTH + 200; x += 180) {
+      const y = GROUND_Y + 34 + ((Math.floor(x / 180) % 3) * 28);
       ctx.moveTo(x, y);
       ctx.lineTo(x + 22, y + 8);
       ctx.lineTo(x + 44, y - 5);
@@ -5787,10 +5791,10 @@ function drawGroundTexture(theme) {
     }
     ctx.stroke();
 
-    ctx.fillStyle = "rgba(255, 177, 58, 0.55)";
-    for (let x = lavaOffset - 60; x < WIDTH + 120; x += 86) {
+    ctx.fillStyle = "rgba(255, 177, 58, 0.26)";
+    for (let x = lavaOffset - 100; x < WIDTH + 180; x += 180) {
       ctx.beginPath();
-      ctx.ellipse(x, GROUND_Y + 82 + (x % 4) * 10, 20, 5, -0.15, 0, Math.PI * 2);
+      ctx.ellipse(x, GROUND_Y + 84 + (x % 3) * 8, 14, 4, -0.15, 0, Math.PI * 2);
       ctx.fill();
     }
     return;
@@ -5801,18 +5805,18 @@ function drawGroundTexture(theme) {
     ctx.beginPath();
     ctx.moveTo(0, GROUND_Y + 8);
     for (let x = 0; x <= WIDTH + 80; x += 80) {
-      ctx.quadraticCurveTo(x + 36, GROUND_Y - 7 + Math.sin((state.frame + x) * 0.015) * 4, x + 80, GROUND_Y + 8);
+      ctx.quadraticCurveTo(x + 36, GROUND_Y - 5 + Math.sin((state.frame + x) * 0.006) * 1.6, x + 80, GROUND_Y + 8);
     }
     ctx.lineTo(WIDTH, HEIGHT);
     ctx.lineTo(0, HEIGHT);
     ctx.closePath();
     ctx.fill();
 
-    const skiOffset = -(state.scrollDistance * 0.78) % 150;
+    const skiOffset = -(state.scrollDistance * 0.34) % 260;
     ctx.strokeStyle = appSettings.darkMode ? "rgba(184, 222, 241, 0.38)" : "rgba(93, 146, 174, 0.3)";
     ctx.lineWidth = 3;
     ctx.beginPath();
-    for (let x = skiOffset - 150; x < WIDTH + 150; x += 150) {
+    for (let x = skiOffset - 260; x < WIDTH + 260; x += 260) {
       ctx.moveTo(x, GROUND_Y + 38);
       ctx.quadraticCurveTo(x + 42, GROUND_Y + 28, x + 104, GROUND_Y + 40);
       ctx.moveTo(x + 4, GROUND_Y + 52);
@@ -5821,7 +5825,7 @@ function drawGroundTexture(theme) {
     ctx.stroke();
 
     ctx.fillStyle = appSettings.darkMode ? "rgba(210, 235, 247, 0.18)" : "rgba(91, 135, 160, 0.13)";
-    for (let x = skiOffset - 90; x < WIDTH + 120; x += 105) {
+    for (let x = skiOffset - 130; x < WIDTH + 160; x += 210) {
       ctx.beginPath();
       ctx.ellipse(x, GROUND_Y + 86 + (x % 3) * 8, 18, 4, -0.1, 0, Math.PI * 2);
       ctx.fill();
@@ -5833,14 +5837,14 @@ function drawGroundTexture(theme) {
     ctx.strokeStyle = appSettings.darkMode ? "rgba(153, 203, 137, 0.16)" : "rgba(235, 255, 201, 0.42)";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    for (let x = offset - 42; x < WIDTH + 42; x += 14) {
+    for (let x = offset - 70; x < WIDTH + 70; x += 28) {
       ctx.moveTo(x, GROUND_Y + 18);
       ctx.quadraticCurveTo(x + 7, GROUND_Y + 9, x + 14, GROUND_Y + 18);
     }
     ctx.stroke();
 
-    const flowerOffset = -(state.scrollDistance * 0.72) % 84;
-    for (let x = flowerOffset - 84; x < WIDTH + 84; x += 84) {
+    const flowerOffset = -(state.scrollDistance * 0.3) % 150;
+    for (let x = flowerOffset - 150; x < WIDTH + 150; x += 150) {
       const y = GROUND_Y + 48 + ((Math.floor(x / 84) % 3) * 22);
       ctx.strokeStyle = "rgba(50, 116, 46, 0.5)";
       ctx.lineWidth = 1.5;
@@ -5863,17 +5867,17 @@ function drawGroundTexture(theme) {
   }
 
   if (theme.season === "summer") {
-    const rowOffset = -(state.scrollDistance * 0.62) % 56;
+    const rowOffset = -(state.scrollDistance * 0.26) % 96;
     ctx.strokeStyle = appSettings.darkMode ? "rgba(232, 184, 86, 0.2)" : "rgba(255, 227, 121, 0.42)";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    for (let x = rowOffset - 80; x < WIDTH + 80; x += 28) {
+    for (let x = rowOffset - 100; x < WIDTH + 100; x += 56) {
       ctx.moveTo(x, GROUND_Y + 18);
       ctx.lineTo(x + 44, HEIGHT - 12);
     }
     ctx.stroke();
     ctx.fillStyle = appSettings.darkMode ? "rgba(197, 139, 65, 0.2)" : "rgba(126, 84, 32, 0.18)";
-    for (let x = rowOffset - 56; x < WIDTH + 80; x += 72) {
+    for (let x = rowOffset - 96; x < WIDTH + 120; x += 144) {
       ctx.beginPath();
       ctx.ellipse(x, GROUND_Y + 68, 18, 5, -0.25, 0, Math.PI * 2);
       ctx.fill();
@@ -5882,22 +5886,22 @@ function drawGroundTexture(theme) {
   }
 
   if (theme.season === "autumn") {
-    const leafOffset = -(state.scrollDistance * 0.68) % 76;
+    const leafOffset = -(state.scrollDistance * 0.28) % 140;
     ctx.strokeStyle = appSettings.darkMode ? "rgba(0,0,0,0.22)" : "rgba(88, 47, 24, 0.24)";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    for (let x = leafOffset - 76; x < WIDTH + 76; x += 76) {
+    for (let x = leafOffset - 140; x < WIDTH + 140; x += 140) {
       ctx.moveTo(x, GROUND_Y + 44);
       ctx.lineTo(x + 38, GROUND_Y + 38);
       ctx.lineTo(x + 76, GROUND_Y + 46);
     }
     ctx.stroke();
-    for (let x = leafOffset - 60; x < WIDTH + 100; x += 38) {
+    for (let x = leafOffset - 100; x < WIDTH + 160; x += 90) {
       const y = GROUND_Y + 24 + ((Math.floor(x / 38) % 5) * 22);
       ctx.fillStyle = x % 3 === 0 ? "rgba(207, 86, 38, 0.74)" : "rgba(224, 153, 54, 0.72)";
       ctx.save();
       ctx.translate(x, y);
-      ctx.rotate((x + state.frame) * 0.03);
+      ctx.rotate((x + state.frame * 0.35) * 0.018);
       ctx.beginPath();
       ctx.moveTo(0, -4);
       ctx.quadraticCurveTo(8, 0, 0, 6);
@@ -5911,7 +5915,7 @@ function drawGroundTexture(theme) {
   ctx.strokeStyle = appSettings.darkMode ? "rgba(153, 203, 137, 0.12)" : "rgba(235, 255, 201, 0.32)";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  for (let x = offset - 42; x < WIDTH + 42; x += 14) {
+  for (let x = offset - 70; x < WIDTH + 70; x += 28) {
     ctx.moveTo(x, GROUND_Y + 18);
     ctx.quadraticCurveTo(x + 7, GROUND_Y + 11, x + 14, GROUND_Y + 18);
   }
@@ -5920,7 +5924,7 @@ function drawGroundTexture(theme) {
   ctx.strokeStyle = appSettings.darkMode ? "rgba(0,0,0,0.22)" : "rgba(52, 98, 43, 0.24)";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  for (let x = offset - 60; x < WIDTH + 60; x += 60) {
+  for (let x = offset - 90; x < WIDTH + 90; x += 110) {
     ctx.moveTo(x, GROUND_Y + 46);
     ctx.lineTo(x + 32, GROUND_Y + 40);
     ctx.lineTo(x + 64, GROUND_Y + 48);
